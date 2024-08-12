@@ -31,6 +31,9 @@ Revision History:
 
 Notes:
 
+Help:
+    如果光标在某个函数或宏上，按下F1键会自动打开相关的官方文档页面。
+
 --*/
 #include "netvmin6.h"
 #include "miniport.tmh"
@@ -65,12 +68,12 @@ Routine Description:
 
     In the context of its DriverEntry function, a miniport driver associates
     itself with NDIS, specifies the NDIS version that it is using, and
-    registers its entry points.
+    registers its entry points(与 NDIS 关联、指定 NDIS 版本、注册入口点).
 
 
 Arguments:
-    PVOID DriverObject - pointer to the driver object.
-    PVOID RegistryPath - pointer to the driver registry path.
+    PVOID DriverObject - pointer to the driver object(指向驱动对象的指针).
+    PVOID RegistryPath - pointer to the driver registry path(指向驱动注册路径的指针).
 
     Return Value:
 
@@ -89,20 +92,21 @@ Arguments:
     do
     {
         //
-        // Initialize any driver-global variables here.
+        // Initialize any driver-global variables here(初始化所有驱动全局变量).
         //
 
+        // NdisZeroMemory(Destination, Length): fills a block of memory with zeros.
         NdisZeroMemory(&GlobalData, sizeof(GlobalData));
 
         //
         // The ApaterList in the GlobalData structure is used to track multiple
-        // adapters controlled by this miniport.
+        // adapters controlled by this miniport(用于追踪由这个 miniport 控制的多个适配器).
         //
         NdisInitializeListHead(&GlobalData.AdapterList);
 
 
         //
-        // The FrameDataLookaside list is used to help emulate an Ethernet hub.
+        // The FrameDataLookaside list is used to help emulate an Ethernet hub(用于帮助模拟以太网集线器).
         //
         NdisInitializeNPagedLookasideList(
                 &GlobalData.FrameDataLookaside,
@@ -175,6 +179,7 @@ Arguments:
         // By calling NdisMRegisterMiniportDriver, the driver indicates that it
         // is ready for NDIS to call the driver's MiniportSetOptions and
         // MiniportInitializeEx handlers.
+        // Miniport Driver 通过调用 NdisMRegisterMiniportDriver 向 NDIS 注册一组 MiniportXxx 函数
         //
         DEBUGP(MP_LOUD, "Calling NdisMRegisterMiniportDriver...\n");
         NDIS_DECLARE_MINIPORT_DRIVER_CONTEXT(MP_GLOBAL);
@@ -189,7 +194,7 @@ Arguments:
             DEBUGP(MP_ERROR, "NdisMRegisterMiniportDriver failed: %d\n", Status);
             DriverUnload(DriverObject);
             Status = NDIS_STATUS_FAILURE;
-            break;
+            break; // 跳出 while 循环
         }
 
         GlobalData.Flags |= fGLOBAL_MINIPORT_REGISTERED;

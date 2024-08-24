@@ -13,7 +13,7 @@ Module Name:
 
 Abstract:
 
-    The purpose of this sample is to illustrate functionality of a deserialized
+    The purpose of this sample is to illustrate functionality of a deserialized(串行化)
     NDIS miniport driver without requiring a physical network adapter. This
     sample is based on E100BEX sample present in the DDK. It is basically a
     simplified version of E100bex driver. The driver can be installed either

@@ -22,7 +22,7 @@ Abstract:
 
 //
 // Constant defines the maximum number of processors in the RSS processor set
-// the hardware can support.
+// the hardware can support(定义 硬件可以支持的 RSS处理器集 中的最大处理器数量).
 //
 #define RSSV2_MAX_NUMBER_OF_PROCESSORS_IN_RSS_TABLE 64
 #include "rssv2lib.h"

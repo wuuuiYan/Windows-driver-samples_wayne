@@ -129,7 +129,7 @@ typedef struct _MP_ADAPTER
 #define fMP_ADAPTER_SURPRISE_REMOVED        0x00000100 // 适配器被意外移除
 #define fMP_ADAPTER_LOW_POWER               0x00000200 // 适配器处于低功率状态
 
-    ULONG                   Flags; // 适配器的状态标志位，使用上述宏定义的标志位
+    ULONG                   Flags; // 适配器的状态标志位，使用上述宏定义指示状态
 
 
     UCHAR                   PermanentAddress[NIC_MACADDR_SIZE]; // 永久MAC地址

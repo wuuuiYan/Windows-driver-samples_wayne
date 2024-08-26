@@ -17,12 +17,12 @@ Abstract:
 
 --*/
 
-#include "netvmin6.h"
+#include "netvmin6.h" // #include <ndis.h>
 #include "rssv2.tmh"
 
 //
 // Constant defines the maximum number of processors in the RSS processor set
-// the hardware can support(���� Ӳ������֧�ֵ� RSS�������� �е������������).
+// the hardware can support(定义 硬件可以支持的 RSS处理器集 中的最大处理器数量).
 //
 #define RSSV2_MAX_NUMBER_OF_PROCESSORS_IN_RSS_TABLE 64
 #include "rssv2lib.h"
@@ -37,7 +37,7 @@ MiniportApplyMoveITECommandToHW(
 /*++
 Routine Description:
 
-    This routine propagates changes as specified by the move command to the HW.
+    This routine propagates(散播、宣扬) changes as specified by the move command to the HW.
 
     NOTE: This routine cannot fail. All failures should have been handled and
     reported before calling this function.
@@ -51,10 +51,10 @@ Arguments:
 
     Vport                   - Pointer to the VPort
 
-    Command                 - Move command which identifies the steering 
+    Command                 - Move command which identifies the steering
                               parameter and the target processor.
 
-    NewLocalCpuIndex        - Local index of the target processor the steering 
+    NewLocalCpuIndex        - Local index of the target processor the steering
                               parameter is being pointed to.
 
 Return Value:
@@ -63,6 +63,7 @@ Return Value:
 
 --*/
 {
+	// 标记未使用的参数，避免编译器发出警告
     UNREFERENCED_PARAMETER(Adapter);
     UNREFERENCED_PARAMETER(VPort);
     UNREFERENCED_PARAMETER(Command);
@@ -74,13 +75,13 @@ MiniportApplyConfigurationToHW(
     _Inout_ PMP_ADAPTER Adapter,
     _Inout_ PMP_ADAPTER_VPORT VPort,
     _In_ BOOLEAN IsRssEnabled,
-    _In_ USHORT NewITCount, 
+    _In_ USHORT NewITCount,
     _In_ ULONG NewNumberOfQueues
     )
 /*++
 Routine Description:
 
-    This routine propagates changes as specified by the configuration OID to 
+    This routine propagates changes as specified by the configuration OID to
     the HW.
 
     All failures cases are already handled and before calling this function.
@@ -109,8 +110,12 @@ Return Value:
     UNREFERENCED_PARAMETER(NewITCount);
     UNREFERENCED_PARAMETER(NewNumberOfQueues);
 }
-    
 
+/*
+	SAL（Source Annotation Language）标注用于在 Windows 驱动程序开发中指示函数的调用要求
+	具体来说，这个宏表明函数 InitializeRSSConfig 应当在 IRQL 为 PASSIVE_LEVEL 时被调用
+	PASSIVE_LEVEL 是最低级别的 IRQL，允许所有类型的操作，包括分页内存访问、睡眠阻塞操作、内核态与用户态间的切换等
+*/
 _IRQL_requires_(PASSIVE_LEVEL)
 NDIS_STATUS
 InitializeRSSConfig(
@@ -152,8 +157,8 @@ Return Value:
     //
     // Allocate the neccessary memory for reading the available processors
     //
-    Adapter->RSSData.RssProcessorInfo = 
-        (PNDIS_RSS_PROCESSOR_INFO)ExAllocatePool2(POOL_FLAG_NON_PAGED, 
+    Adapter->RSSData.RssProcessorInfo =
+        (PNDIS_RSS_PROCESSOR_INFO)ExAllocatePool2(POOL_FLAG_NON_PAGED,
                                                   RssInfoSize,
                                                   'IRMT');
     if (Adapter->RSSData.RssProcessorInfo == NULL)
@@ -166,7 +171,7 @@ Return Value:
     Status = NdisGetRssProcessorInformation(Adapter->AdapterHandle,
                                             Adapter->RSSData.RssProcessorInfo,
                                             &RssInfoSize);
-    
+
     if (Status != NDIS_STATUS_SUCCESS)
     {
         DEBUGP(MP_ERROR, "%s: Unabled to get rss information\n", __FUNCTION__);
@@ -174,7 +179,7 @@ Return Value:
     }
 
     Adapter->RSSData.RssProcessorArray = (PNDIS_RSS_PROCESSOR)
-        ((PUCHAR)Adapter->RSSData.RssProcessorInfo + 
+        ((PUCHAR)Adapter->RSSData.RssProcessorInfo +
          Adapter->RSSData.RssProcessorInfo->RssProcessorArrayOffset);
 
     Status = NDIS_STATUS_SUCCESS;
@@ -213,13 +218,13 @@ Return Value:
     UINT8 index;
     PNDIS_RSS_PROCESSOR processor;
 
-    for (index = 0; 
-         index < Adapter->RSSData.RssProcessorInfo->RssProcessorCount; 
+    for (index = 0;
+         index < Adapter->RSSData.RssProcessorInfo->RssProcessorCount;
          index++)
     {
         processor = &Adapter->RSSData.RssProcessorArray[index];
 
-        if ((processor->ProcNum.Group == ProcessorNumber.Group) && 
+        if ((processor->ProcNum.Group == ProcessorNumber.Group) &&
             (processor->ProcNum.Number == ProcessorNumber.Number))
         {
             return index;
@@ -274,7 +279,7 @@ NICSetRSSv2ValidateRssProcessor(
 /*++
 Routine Description:
 
-    This routine validates processor against minport's RSS settings, and if it 
+    This routine validates processor against minport's RSS settings, and if it
     is valid, returns local index.
 
 Arguments:
@@ -322,7 +327,7 @@ Return Value:
     if ((ProcessorNumber.Group == (USHORT)RssProcessorInfo->RssMaxProcessor.Group) &&
         (ProcessorNumber.Number > (UCHAR)RssProcessorInfo->RssMaxProcessor.Number))
     {
-        DEBUGP(MP_ERROR, "RssValidateProcessor: Invalid Proc Number %d:%d, above RssMaxProcNumber\n", 
+        DEBUGP(MP_ERROR, "RssValidateProcessor: Invalid Proc Number %d:%d, above RssMaxProcNumber\n",
                      ProcessorNumber.Group, ProcessorNumber.Number);
         return FALSE;
     }
@@ -373,7 +378,7 @@ Return Value:
     VPort->RssEnabled = FALSE;
 
     if (!NICSetRSSv2ValidateRssProcessor(Adapter,
-                                         PrimaryProcessor, 
+                                         PrimaryProcessor,
                                          &PrimaryProcessorIndex))
     {
         DEBUGP(MP_TRACE, "Primary is not a valid RSS processor.\n");
@@ -393,7 +398,7 @@ Return Value:
         goto Cleanup;
     }
 
-    RssV2NQEnforcerInitialize(VPort->QueueMap, 
+    RssV2NQEnforcerInitialize(VPort->QueueMap,
                               RSSV2_MAX_NUMBER_OF_PROCESSORS_IN_RSS_TABLE);
 
     RtlFillMemory(&VPort->RssV2IndexTable, sizeof(VPort->RssV2IndexTable), 0xFF);
@@ -430,7 +435,7 @@ NICSetRSSv2SetCurrentProcessor(
 /*++
 Routine Description:
 
-    This routine updates tracking information for the steering parameter 
+    This routine updates tracking information for the steering parameter
     (Primary, Default or ITE[n]), as selected by the Command.
 
     Routine is called after the "move command" has fully succeeded.
@@ -474,10 +479,10 @@ Return Value:
         VPort->RssV2Table[Command->IndirectionTableIndex] = NewProcessor;
 
         DEBUGP(MP_TRACE, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: OK: ITE[%d] VPortId %d, RssEnabled %d, TargetProc %d:%d\n",
-                    Command->IndirectionTableIndex, 
-                    Command->VPortId, 
-                    VPort->RssEnabled, 
-                    NewProcessor.Group, 
+                    Command->IndirectionTableIndex,
+                    Command->VPortId,
+                    VPort->RssEnabled,
+                    NewProcessor.Group,
                     NewProcessor.Number);
     }
 }
@@ -495,7 +500,7 @@ NICSetRSSv2ValidateCommandAndGetProcessor (
 /*++
 Routine Description:
 
-    This routine validates the move command, and returns information about 
+    This routine validates the move command, and returns information about
     specified steering parameter (Primary, Default or ITE[n] if command is valid.
 
 Arguments:
@@ -504,7 +509,7 @@ Arguments:
 
     Command                   - Move command used to update steering parameter
 
-    CurrentProcessor        - Pointer which receives processor where steering 
+    CurrentProcessor        - Pointer which receives processor where steering
                               parameter currenty points to.
 
     CurrentCpuIndex         - Corresponding local index
@@ -550,8 +555,8 @@ Return Value:
         }
         else
         {
-            DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid IndirectionTableIndex(%d) >= %d\n", 
-                        Command->IndirectionTableIndex, 
+            DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid IndirectionTableIndex(%d) >= %d\n",
+                        Command->IndirectionTableIndex,
                         VPort->RssV2Params.NumberOfIndirectionTableEntries);
         }
     }
@@ -572,7 +577,8 @@ NICSetRSSv2Parameters(
 /*++
 Routine Description:
 
-    This routine handles OID_GEN_RECEIVE_SCALE_PARAMETERS_V2 set request. 
+    This routine handles OID_GEN_RECEIVE_SCALE_PARAMETERS_V2 set request.
+	Overlying driver -> miniport driver：哈希函数、哈希类型等的 OID 设置请求
 
 Arguments:
 
@@ -581,9 +587,9 @@ Arguments:
 
 Return Value:
 
-    NDIS_STATUS   
+    NDIS_STATUS
 
---*/      
+--*/
 {
     USHORT EntryIndex;
     BOOLEAN IsHashInfoChanged;
@@ -614,14 +620,14 @@ Return Value:
     //
     // Validate the request
     //
-    if (RssParams->HashSecretKeySize != 
+    if (RssParams->HashSecretKeySize !=
         NDIS_RSS_HASH_SECRET_KEY_MAX_SIZE_REVISION_2)
     {
         DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Invalid HashSecretKeySize\n");
         return NDIS_STATUS_INVALID_LENGTH;
     }
 
-    if ((Set->InformationBufferLength < 
+    if ((Set->InformationBufferLength <
          (RssParams->HashSecretKeyOffset + RssParams->HashSecretKeySize))
             ||
         (RssParams->HashSecretKeyOffset <
@@ -633,7 +639,7 @@ Return Value:
 
     if ((NdisRequest->Flags & NDIS_OID_REQUEST_FLAGS_VPORT_ID_VALID) != 0)
     {
-        DEBUGP(MP_TRACE, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Issued for VPortId=%d, Flags=0x%x \n", 
+        DEBUGP(MP_TRACE, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Issued for VPortId=%d, Flags=0x%x \n",
                           NdisRequest->VPortId, RssParams->Flags);
         VPortId = NdisRequest->VPortId;
     }
@@ -643,7 +649,7 @@ Return Value:
         VPortId = NDIS_INVALID_VPORT_ID;
     }
 
-    if ((VPortId != NDIS_INVALID_VPORT_ID) && 
+    if ((VPortId != NDIS_INVALID_VPORT_ID) &&
         (VPortId >= MAX_NIC_SWITCH_VPORTS))
     {
         DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Invalid VPortId\n");
@@ -659,23 +665,23 @@ Return Value:
         VPort = &Adapter->RSSData.NativeVPort;
     }
 
-    IsNumQueuesChanged = 
+    IsNumQueuesChanged =
         ((RssParams->Flags & NDIS_RECEIVE_SCALE_PARAM_NUMBER_OF_QUEUES_CHANGED) != 0) &&
          (RssParams->NumberOfQueues != VPort->RssV2Params.NumberOfQueues);
 
-    IsRssEnabled = 
+    IsRssEnabled =
         ((RssParams->Flags & NDIS_RECEIVE_SCALE_PARAM_ENABLE_RSS) != 0);
 
-    IsNumITEsChanged = 
+    IsNumITEsChanged =
         ((RssParams->Flags & NDIS_RECEIVE_SCALE_PARAM_NUMBER_OF_ENTRIES_CHANGED) != 0) &&
-         (RssParams->NumberOfIndirectionTableEntries != 
+         (RssParams->NumberOfIndirectionTableEntries !=
           VPort->RssV2Params.NumberOfIndirectionTableEntries);
 
-    IsHashInfoChanged = 
+    IsHashInfoChanged =
         ((RssParams->Flags & NDIS_RECEIVE_SCALE_PARAM_HASH_INFO_CHANGED) != 0) &&
          (VPort->RssV2Params.HashInformation != RssParams->HashInformation);
 
-    IsHashKeyChanged = 
+    IsHashKeyChanged =
         ((RssParams->Flags & NDIS_RECEIVE_SCALE_PARAM_HASH_KEY_CHANGED) != 0) &&
           !RtlEqualMemory(&VPort->RssV2Key,
                           (PUCHAR)RssParams + RssParams->HashSecretKeyOffset,
@@ -700,7 +706,7 @@ Return Value:
             {
                 DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId=%d, NQ-Violation (queue change): NQueues=%d < NProcs=%d\n",
                             NdisRequest->VPortId,
-                            NewNumberOfQueues, 
+                            NewNumberOfQueues,
                             NumProcs);
                 Status = NDIS_STATUS_NO_QUEUES;
                 goto Cleanup;
@@ -730,9 +736,9 @@ Return Value:
                 if ((ProcessorNumber.Group != VPort->RssV2Table[EntryIndex].Group) ||
                     (ProcessorNumber.Number != VPort->RssV2Table[EntryIndex].Number))
                 {
-                    DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Cannot shrink IT size from %d to %d, mismatch at ITE[%d]\n", 
-                        NdisRequest->VPortId, 
-                        OldITCount, 
+                    DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Cannot shrink IT size from %d to %d, mismatch at ITE[%d]\n",
+                        NdisRequest->VPortId,
+                        OldITCount,
                         NewITCount,
                         EntryIndex);
                     Status = NDIS_STATUS_INVALID_DATA;
@@ -755,7 +761,7 @@ Return Value:
                                              &LocalCpuIndex))
         {
             DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Invalid DedfaultProcessorNumebr: %d:%d \n",
-                        VPort->DefaultProcessorNumber.Group, 
+                        VPort->DefaultProcessorNumber.Group,
                         VPort->DefaultProcessorNumber.Number);
 
             Status = NDIS_STATUS_INVALID_DATA;
@@ -772,12 +778,12 @@ Return Value:
             ProcessorNumber = VPort->RssV2Table[EntryIndex];
 
             if (!NICSetRSSv2ValidateRssProcessor(Adapter,
-                                                 ProcessorNumber, 
+                                                 ProcessorNumber,
                                                  &LocalCpuIndex))
             {
                 DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Invalid ITE[%d]: %d:%d \n",
                             EntryIndex,
-                            ProcessorNumber.Group, 
+                            ProcessorNumber.Group,
                             ProcessorNumber.Number);
 
                 Status = NDIS_STATUS_INVALID_DATA;
@@ -789,7 +795,7 @@ Return Value:
         }
 
         //
-        // After VPort->QueueMap is built, check for NQ-violation during 
+        // After VPort->QueueMap is built, check for NQ-violation during
         // RSS enablement.
         //
         // Get number of queues after RSS enablement.
@@ -798,7 +804,7 @@ Return Value:
         if (NumProcs > NewNumberOfQueues)
         {
             DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: NQ-Violation: NQueues=%d < NProcs=%d\n",
-                        NewNumberOfQueues, 
+                        NewNumberOfQueues,
                         NumProcs);
             Status = NDIS_STATUS_NO_QUEUES;
             goto Cleanup;
@@ -813,11 +819,11 @@ Return Value:
         PrimaryProcessorNumber = VPort->PrimaryProcessorNumber;
 
         if (!NICSetRSSv2ValidateRssProcessor(Adapter,
-                                             PrimaryProcessorNumber, 
+                                             PrimaryProcessorNumber,
                                              &LocalCpuIndex))
         {
             DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: Invalid PrimaryProcessorNumebr: %d:%d \n",
-                        PrimaryProcessorNumber.Group, 
+                        PrimaryProcessorNumber.Group,
                         PrimaryProcessorNumber.Number);
 
             Status = NDIS_STATUS_INVALID_DATA;
@@ -834,7 +840,7 @@ Return Value:
     //
     if (IsHashKeyChanged)
     {
-        VPort->RssV2Params.HashSecretKeySize = 
+        VPort->RssV2Params.HashSecretKeySize =
             RssParams->HashSecretKeySize;
 
         NdisMoveMemory(&VPort->RssV2Key,
@@ -857,7 +863,7 @@ Return Value:
             //
             // IT expansion
             //
-            DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Expand IT size from %d to %d\n", 
+            DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Expand IT size from %d to %d\n",
                 NdisRequest->VPortId, OldITCount, NewITCount);
 
             ASSERT((NewITCount % OldITCount) == 0);
@@ -876,7 +882,7 @@ Return Value:
             //
             // IT contraction
             //
-            DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Shrink IT size from %d to %d\n", 
+            DEBUGP(MP_ERROR, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId %d, Shrink IT size from %d to %d\n",
                 NdisRequest->VPortId, OldITCount, NewITCount);
             ASSERT((OldITCount % NewITCount) == 0);
 
@@ -893,20 +899,20 @@ Return Value:
     }
 
     //
-    // Apply new configuration to HW (hash key and information is already in 
+    // Apply new configuration to HW (hash key and information is already in
     // the VPort object).
     //
-    MiniportApplyConfigurationToHW(Adapter, 
-                                   VPort, 
+    MiniportApplyConfigurationToHW(Adapter,
+                                   VPort,
                                    IsRssEnabled,
-                                   NewITCount, 
+                                   NewITCount,
                                    NewNumberOfQueues);
 
     VPort->RssV2Params.NumberOfIndirectionTableEntries = NewITCount;
     VPort->RssV2Params.NumberOfQueues = NewNumberOfQueues;
     VPort->RssEnabled = IsRssEnabled;
 
-    DEBUGP(MP_TRACE, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId=%d, RssEnabled=%d, IT.size=%d\n", 
+    DEBUGP(MP_TRACE, "OID_GEN_RECEIVE_SCALE_PARAMETERS_V2: VPortId=%d, RssEnabled=%d, IT.size=%d\n",
         NdisRequest->VPortId, IsRssEnabled, VPort->RssV2Params.NumberOfIndirectionTableEntries);
 
     Set->BytesNeeded = Set->InformationBufferLength;
@@ -928,7 +934,7 @@ NICSetRSSv2IndirectionTableEntries(
 /*++
 Routine Description:
 
-    This routine handles OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES method request. 
+    This routine handles OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES method request.
 
 Arguments:
 
@@ -937,9 +943,9 @@ Arguments:
 
 Return Value:
 
-    NDIS_STATUS   
+    NDIS_STATUS
 
---*/      
+--*/
 {
     PROCESSOR_NUMBER ActorProcessorNumber;
     PNDIS_RSS_SET_INDIRECTION_ENTRY Command;
@@ -962,10 +968,10 @@ Return Value:
     PMP_ADAPTER_VPORT VPort;
 
     //
-    // Allocate a local queue map on stack, to hold temporary results during 
+    // Allocate a local queue map on stack, to hold temporary results during
     // handling of each "move all" group.
     //
-    DECLARE_RSSV2_QUEUE_MAP_ON_STACK(LocalQueueMap, 
+    DECLARE_RSSV2_QUEUE_MAP_ON_STACK(LocalQueueMap,
                                      RSSV2_MAX_NUMBER_OF_PROCESSORS_IN_RSS_TABLE);
 
     DEBUGP(MP_TRACE, "[%p] ---> NICSetRSSv2IndirectionTableEntries\n", Adapter);
@@ -976,12 +982,12 @@ Return Value:
 
     Method->BytesRead = 0;
     Method->BytesNeeded = 0;
-    Method->BytesWritten = 0; 
+    Method->BytesWritten = 0;
 
     //
     // Validate the request
     //
-    if (InputBufferLength < 
+    if (InputBufferLength <
         (NDIS_SIZEOF_RSS_SET_INDIRECTION_ENTRIES_REVISION_1 +
          RssEntries->NumberOfRssEntries * RssEntries->RssEntrySize))
     {
@@ -993,7 +999,7 @@ Return Value:
     //
     // RSSv2 spec requires up to 130 entries to be handled in a single batch.
     //
-    if (RssEntries->NumberOfRssEntries > 
+    if (RssEntries->NumberOfRssEntries >
         (2 + MAX_NUMBER_OF_INDIRECTION_TABLE_ENTRIES))
     {
         DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid NumberOfRssEntries \n");
@@ -1011,8 +1017,8 @@ Return Value:
         ((PUCHAR)RssEntries + RssEntries->RssEntryTableOffset);
 
     DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Actor %d:%d, NumberOfRssEntries %d \n",
-                ActorProcessorNumber.Group, 
-                ActorProcessorNumber.Number, 
+                ActorProcessorNumber.Group,
+                ActorProcessorNumber.Number,
                 RssEntries->NumberOfRssEntries);
 
     NumCommandsToExecute = 0;
@@ -1034,18 +1040,18 @@ Return Value:
         {
             if (SwitchId != NDIS_DEFAULT_SWITCH_ID)
             {
-                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid SwitchId (%d)\n", 
+                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid SwitchId (%d)\n",
                             SwitchId);
-                RssV2SetCommandRangeStatus(&Context, 
+                RssV2SetCommandRangeStatus(&Context,
                                            NDIS_STATUS_INVALID_PARAMETER);
                 continue; // while (RssV2FindNextCommandRange())
             }
 
             if (VPortId > MAX_NIC_SWITCH_VPORTS)
             {
-                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid VPortId (%d)\n", 
+                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: Invalid VPortId (%d)\n",
                             VPortId);
-                RssV2SetCommandRangeStatus(&Context, 
+                RssV2SetCommandRangeStatus(&Context,
                                            NDIS_STATUS_INVALID_PARAMETER);
                 continue; // while (RssV2FindNextCommandRange())
             }
@@ -1053,19 +1059,19 @@ Return Value:
             VPort = &Adapter->RSSData.VPort[VPortId];
 
             if (VPort->Created == FALSE)
-            {                
-                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPort %d is not created\n", 
+            {
+                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPort %d is not created\n",
                             VPortId);
-                RssV2SetCommandRangeStatus(&Context, 
+                RssV2SetCommandRangeStatus(&Context,
                                            NDIS_STATUS_INVALID_PARAMETER);
                 continue; // while (RssV2FindNextCommandRange())
             }
 
             if (VPort->Active == FALSE)
-            {                
-                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPort %d is not active\n", 
+            {
+                DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPort %d is not active\n",
                             VPortId);
-                RssV2SetCommandRangeStatus(&Context, 
+                RssV2SetCommandRangeStatus(&Context,
                                            NDIS_STATUS_INVALID_PORT_STATE);
                 continue; // while (RssV2FindNextCommandRange())
             }
@@ -1080,7 +1086,7 @@ Return Value:
         while ((Command = RssV2GetNextCommand(&Context, FALSE)) != NULL)
         {
             if (!NICSetRSSv2ValidateCommandAndGetProcessor(
-                    VPort, 
+                    VPort,
                     Command,
                     &CurrentProcessorNumber,
                     &OldCpuIndex,
@@ -1094,12 +1100,12 @@ Return Value:
                 (ActorProcessorNumber.Number != CurrentProcessorNumber.Number))
             {
                 DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPortId=%d, Flags=0x%x, EntryIndex=%d: Invalid Actor %d:%d, expected %d:%d\n",
-                            Command->VPortId, 
+                            Command->VPortId,
                             Command->Flags,
-                            Command->IndirectionTableIndex, 
+                            Command->IndirectionTableIndex,
                             ActorProcessorNumber.Group,
                             ActorProcessorNumber.Number,
-                            CurrentProcessorNumber.Group, 
+                            CurrentProcessorNumber.Group,
                             CurrentProcessorNumber.Number);
 
                 Command->EntryStatus = NDIS_STATUS_NOT_ACCEPTED;
@@ -1116,9 +1122,9 @@ Return Value:
                 (TargetProcessorNumber.Number == CurrentProcessorNumber.Number))
             {
                 DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: OK1: VPortId=%d, Flags=0x%x, EntryIndex=%d: TargetProc=%d:%d\n",
-                            Command->VPortId, 
+                            Command->VPortId,
                             Command->Flags,
-                            Command->IndirectionTableIndex, 
+                            Command->IndirectionTableIndex,
                             TargetProcessorNumber.Group,
                             TargetProcessorNumber.Number);
 
@@ -1132,16 +1138,16 @@ Return Value:
                 // INACTIVE steering entities are only tracked and will be
                 // enforced during RSS transition to ON/OFF.
                 //
-                NICSetRSSv2SetCurrentProcessor(VPort, 
-                                               Command, 
-                                               TargetProcessorNumber, 
+                NICSetRSSv2SetCurrentProcessor(VPort,
+                                               Command,
+                                               TargetProcessorNumber,
                                                0xFF);
 
                 DEBUGP(MP_ERROR, "NDIS_SET_INDIRECTION_TABLE_ENTRY: OK2: VPortId=%d, Flags=0x%x, EntryIndex=%d, TargetProc=%d:%d\n",
-                            Command->VPortId, 
-                            Command->Flags, 
-                            Command->IndirectionTableIndex, 
-                            TargetProcessorNumber.Group, 
+                            Command->VPortId,
+                            Command->Flags,
+                            Command->IndirectionTableIndex,
+                            TargetProcessorNumber.Group,
                             TargetProcessorNumber.Number);
 
                 Command->EntryStatus = NDIS_STATUS_SUCCESS;
@@ -1149,7 +1155,7 @@ Return Value:
             }
 
             if (!NICSetRSSv2ValidateRssProcessor(Adapter,
-                                                 TargetProcessorNumber, 
+                                                 TargetProcessorNumber,
                                                  &NewCpuIndex))
             {
                 Command->EntryStatus = NDIS_STATUS_INVALID_DATA;
@@ -1189,7 +1195,7 @@ Return Value:
         //
         // VPorts are already validated
         //
-        VPort = IsNativeRss ? &Adapter->RSSData.NativeVPort : 
+        VPort = IsNativeRss ? &Adapter->RSSData.NativeVPort :
                               &Adapter->RSSData.VPort[VPortId];
 
         RssV2NQEnforcerEnter(VPort->QueueMap, LocalQueueMap);
@@ -1201,7 +1207,7 @@ Return Value:
         {
             TargetProcessorNumber = Command->TargetProcessorNumber;
             IsValid = NICSetRSSv2ValidateRssProcessor(Adapter,
-                                                      TargetProcessorNumber, 
+                                                      TargetProcessorNumber,
                                                       &NewCpuIndex);
             ASSERT(IsValid);
 
@@ -1216,12 +1222,12 @@ Return Value:
         }
 
         Status = RssV2NQEnforcerLeave(VPort->QueueMap,
-                                      LocalQueueMap, 
+                                      LocalQueueMap,
                                       VPort->RssV2Params.NumberOfQueues);
         if (Status != NDIS_STATUS_SUCCESS)
         {
             DEBUGP(MP_ERROR, "OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES: VPortId=%d: NQ-violation: NQueues=%d < NProcs=%d\n",
-                        VPortId, 
+                        VPortId,
                         VPort->RssV2Params.NumberOfQueues,
                         RssV2NQEnforcerGetNumberOfProcs(LocalQueueMap));
             RssV2SetCommandRangeStatus(&Context, Status);
@@ -1233,7 +1239,7 @@ Return Value:
         //
 
         //
-        // Iterate over the same Command range to actually update the 
+        // Iterate over the same Command range to actually update the
         // processor numbers/indices.
         //
         RssV2RestartCommandIterator(&Context);
@@ -1242,7 +1248,7 @@ Return Value:
         {
             TargetProcessorNumber = Command->TargetProcessorNumber;
             IsValid = NICSetRSSv2ValidateRssProcessor(Adapter,
-                                                      TargetProcessorNumber, 
+                                                      TargetProcessorNumber,
                                                       &NewCpuIndex);
             ASSERT(IsValid);
 
@@ -1254,16 +1260,16 @@ Return Value:
             //
             // Reflect the change in software structure.
             //
-            NICSetRSSv2SetCurrentProcessor(VPort, 
-                                           Command, 
-                                           TargetProcessorNumber, 
+            NICSetRSSv2SetCurrentProcessor(VPort,
+                                           Command,
+                                           TargetProcessorNumber,
                                            NewCpuIndex);
 
             DEBUGP(MP_ERROR, "NDIS_SET_INDIRECTION_TABLE_ENTRY: OK3: VPortId=%d, Flags=0x%x, EntryIndex=%d, TargetProc=%d:%d\n",
-                        Command->VPortId, 
-                        Command->Flags, 
-                        Command->IndirectionTableIndex, 
-                        TargetProcessorNumber.Group, 
+                        Command->VPortId,
+                        Command->Flags,
+                        Command->IndirectionTableIndex,
+                        TargetProcessorNumber.Group,
                         TargetProcessorNumber.Number);
 
             Command->EntryStatus = NDIS_STATUS_SUCCESS;

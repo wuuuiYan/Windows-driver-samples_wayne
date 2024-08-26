@@ -16,8 +16,8 @@ Abstract:
     This module contains structure definitons and function prototypes.
 
     TODO:
-       1.  Set the correct driver version number for your versioning scheme(������ȷ�� Driver �汾��).
-       2.  Create unique memory allocation tags(����Ψһ���ڴ�����־).
+       1.  Set the correct driver version number for your versioning scheme(设置正确的 Driver 版本号).
+       2.  Create unique memory allocation tags(创建唯一的内存分配标志).
 
  --*/
 
@@ -44,7 +44,7 @@ Abstract:
 //
 // Define the NDIS miniport interface version that this driver targets.
 //
-// ��������ָ�����ڼ���Ƿ������ض��ĺ�
+// 条件编译指令用于检查是否定义了特定的宏
 #if defined(NDIS60_MINIPORT)
 #  define MP_NDIS_MAJOR_VERSION             6
 #  define MP_NDIS_MINOR_VERSION             0
@@ -105,7 +105,7 @@ Abstract:
 
 
 //
-// Utility macros(���ܺ����궨��)
+// Utility macros(功能函数宏定义)
 // -----------------------------------------------------------------------------
 //
 
@@ -118,17 +118,17 @@ Abstract:
 #endif
 
 
-// _NBL��ָ�� NET_BUFFER_LIST �ṹ��ָ��
-// �� NET_BUFFER_LIST �� MiniportReserved ����ĵ�һ��Ԫ�صĵ�ַǿ������ת��Ϊ PLIST_ENTRY ���͵�ָ��
+// _NBL：指向 NET_BUFFER_LIST 结构的指针
+// 将 NET_BUFFER_LIST 中 MiniportReserved 数组的第一个元素的地址强制类型转换为 PLIST_ENTRY 类型的指针
 #define LIST_ENTRY_FROM_NBL(_NBL) ((PLIST_ENTRY)&(_NBL)->MiniportReserved[0])
 
 /*
 #define CONTAINING_RECORD(address, type, field) \
     ((type *)((PCHAR)(address) - (ULONG_PTR)(&((type *)0)->field)))
-    �� address ����Ϊ type �ṹ�е� field �ֶεĵ�ַ�������ذ������ֶε� type �ṹ��ָ�롣
+    将 address 解释为 type 结构中的 field 字段的地址，并返回包含该字段的 type 结构的指针。
 */
-// _ENTRY��ָ�� LIST_ENTRY �ṹ��ָ��
-// �� LIST_ENTRY �ṹ��ָ��ת��Ϊ������ LIST_ENTRY �� NET_BUFFER_LIST �ṹ��ָ��
+// _ENTRY：指向 LIST_ENTRY 结构的指针
+// 将 LIST_ENTRY 结构的指针转换为包含该 LIST_ENTRY 的 NET_BUFFER_LIST 结构的指针
 #define NBL_FROM_LIST_ENTRY(_ENTRY) (CONTAINING_RECORD(_ENTRY, NET_BUFFER_LIST, MiniportReserved[0]))
 
 // Get a pointer to a LIST_ENTRY for the receive free list, from an NBL pointer
@@ -216,15 +216,16 @@ Abstract:
 //
 typedef struct _MP_GLOBAL
 {
-    // A LIST_ENTRY structure describes an entry in a doubly linked list 
+    // A LIST_ENTRY structure describes an entry in a doubly linked list
     // or serves as the header for such a list.
     LIST_ENTRY              AdapterList;
     /*
-        1) List Entry �������е�ʵ�����ݽڵ㣬���Ա Flink �� Blink �ֱ�ָ�����ڵĽڵ㡣
-        2) List Header �����������(Ҳ�ɿ����յ�)��������ʵ�����ݣ�
-           ���Ա Flink ָ�������еĵ�һ�����ݽڵ㣬Blink ָ�������е����һ���ڵ㡣
-        3����������ʵ�����ǻ����������ڲ����ɾ���ڵ�ʱ����Ҫ���⴦��ͷ����β���ڵ㡣
-        4) ֻҪ��֪������������һ�ڵ㣬�Ϳ��Թ���������� Driver ���������� Adapter��
+        1) List Entry 是链表中的实际数据节点，其成员 Flink 和 Blink 分别指向相邻的节点。
+        2) List Header 是链表的起点(也可看作终点)，不包含实际数据，
+           其成员 Flink 指向链表中的第一个数据节点，Blink 指向链表中的最后一个节点。
+        3）整个链表实际上是环形链表，在插入和删除节点时不需要特殊处理头部和尾部节点。
+        4) 只要已知环形链表的任一节点，就可以管理所有与此 Driver 相连的所有 Adapter。
+		5) 关于此结构更加详细的讲解见《Windows驱动开发技术详解》-张帆 5.2
     */
 
     MP_RW_LOCK_TYPE         Lock;

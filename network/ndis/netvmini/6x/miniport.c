@@ -32,7 +32,7 @@ Revision History:
 Notes:
 
 Help:
-    Èç¹û¹â±êÔÚÄ³¸öº¯Êý»òºêÉÏ£¬°´ÏÂF1¼ü»á×Ô¶¯´ò¿ªÏà¹ØµÄ MicroSoft ¹Ù·½ÎÄµµÒ³Ãæ¡£
+    å¦‚æžœå…‰æ ‡åœ¨æŸä¸ªå‡½æ•°æˆ–å®ä¸Šï¼Œåœ¨ Visual Studio ä¸­æŒ‰ä¸‹F1é”®ä¼šè‡ªåŠ¨æ‰“å¼€ç›¸å…³çš„ MicroSoft å®˜æ–¹æ–‡æ¡£é¡µé¢ã€‚
 
 --*/
 #include "netvmin6.h"
@@ -43,9 +43,9 @@ DriverEntry(
     _In_  PVOID DriverObject,
     _In_  PVOID RegistryPath);
 
-// ±ê¼Ç¸ºÔð³õÊ¼»¯Çý¶¯³ÌÐòµÄ DriverEntry º¯Êý£¬Ê¹Æä½öÔÚ³õÊ¼»¯ÆÚ¼äÔËÐÐÒ»´Î¡£
+// æ ‡è®°è´Ÿè´£åˆå§‹åŒ–é©±åŠ¨ç¨‹åºçš„ DriverEntry å‡½æ•°ï¼Œä½¿å…¶ä»…åœ¨åˆå§‹åŒ–æœŸé—´è¿è¡Œä¸€æ¬¡ã€‚
 #pragma NDIS_INIT_FUNCTION(DriverEntry)
-// ±ê¼Ç¸ºÔðÐ¶ÔØÇý¶¯³ÌÐòµÄ DriverUnload º¯Êý£¬Ê¹ÆäÔÚ·ÖÒ³ÄÚ´æÖÐÔËÐÐ¡£
+// æ ‡è®°è´Ÿè´£å¸è½½é©±åŠ¨ç¨‹åºçš„ DriverUnload å‡½æ•°ï¼Œä½¿å…¶åœ¨åˆ†é¡µå†…å­˜ä¸­è¿è¡Œã€‚
 #pragma NDIS_PAGEABLE_FUNCTION(DriverUnload)
 
 
@@ -69,12 +69,12 @@ Routine Description:
 
     In the context of its DriverEntry function, a miniport driver associates
     itself with NDIS, specifies the NDIS version that it is using, and
-    registers its entry points(Óë NDIS ¹ØÁª¡¢Ö¸¶¨ NDIS °æ±¾¡¢×¢²áÈë¿Úµã).
+    registers its entry points(ä¸Ž NDIS å…³è”ã€æŒ‡å®š NDIS ç‰ˆæœ¬ã€æ³¨å†Œå…¥å£ç‚¹).
 
 
 Arguments:
-    PVOID DriverObject - pointer to the driver object(Ö¸ÏòÇý¶¯¶ÔÏóµÄÖ¸Õë).
-    PVOID RegistryPath - pointer to the driver registry path(Ö¸ÏòÇý¶¯×¢²á±íÂ·¾¶µÄÖ¸Õë).
+    PVOID DriverObject - pointer to the driver object(Ö¸æŒ‡å‘é©±åŠ¨å¯¹è±¡çš„æŒ‡é’ˆ).
+    PVOID RegistryPath - pointer to the driver registry path(æŒ‡å‘é©±åŠ¨æ³¨å†Œè¡¨è·¯å¾„çš„æŒ‡é’ˆ).
 
     Return Value:
 
@@ -83,11 +83,11 @@ Arguments:
 --*/
 {
     NDIS_STATUS Status;
-    // NDIS_MINIPORT_DRIVER_CHARACTERISTICS structure to define its miniport driver characteristics, 
+    // NDIS_MINIPORT_DRIVER_CHARACTERISTICS structure to define its miniport driver characteristics,
     // including the entry points for its MiniportXxx functions.
     NDIS_MINIPORT_DRIVER_CHARACTERISTICS MPChar;
 
-    // The WPP_INIT_TRACING macro registers the provider GUID and initializes the structures 
+    // The WPP_INIT_TRACING macro registers the provider GUID and initializes the structures
     // that are needed for software tracing in a kernel-mode driver.
     WPP_INIT_TRACING(DriverObject,RegistryPath);
 
@@ -97,7 +97,7 @@ Arguments:
     do
     {
         //
-        // Initialize any driver-global variables here(³õÊ¼»¯ËùÓÐÇý¶¯È«¾Ö±äÁ¿).
+        // Initialize any driver-global variables here(åˆå§‹åŒ–æ‰€æœ‰é©±åŠ¨å…¨å±€å˜é‡).
         //
 
         // NdisZeroMemory(Destination, Length): fills a block of memory with zeros.
@@ -105,13 +105,13 @@ Arguments:
 
         //
         // The ApaterList in the GlobalData structure is used to track multiple
-        // adapters controlled by this miniport(ÓÃÓÚ×·×ÙÓÉÕâ¸ö miniport ¿ØÖÆµÄ¶à¸öÊÊÅäÆ÷).
+        // adapters controlled by this miniport(ç”¨äºŽè¿½è¸ªç”±è¿™ä¸ª miniport æŽ§åˆ¶çš„å¤šä¸ªé€‚é…å™¨).
         //
         NdisInitializeListHead(&GlobalData.AdapterList);
 
 
         //
-        // The FrameDataLookaside list is used to help emulate an Ethernet hub(ÓÃÓÚ°ïÖúÄ£ÄâÒÔÌ«Íø¼¯ÏßÆ÷).
+        // The FrameDataLookaside list is used to help emulate an Ethernet hub(ç”¨äºŽå¸®åŠ©æ¨¡æ‹Ÿä»¥å¤ªç½‘é›†çº¿å™¨).
         //  NdisInitializeNPagedLookasideList() initializes a lookaside list.
         NdisInitializeNPagedLookasideList(
                 &GlobalData.FrameDataLookaside,
@@ -122,14 +122,14 @@ Arguments:
                 NIC_TAG_FRAME,
                 0); // Reserved for system use
         /*
-            |= ²Ù×÷¿ÉÒÔ½« GlobalData.Flags µÄÄ³Ð©ÌØ¶¨Î»ÖÃ1£¬´ïµ½¸ßÐ§¹ÜÀíºÍ×´Ì¬¸ú×ÙµÄÄ¿µÄ
+            |= æ“ä½œå¯ä»¥å°† GlobalData.Flags çš„æŸäº›ç‰¹å®šä½ç½®1ï¼Œè¾¾åˆ°é«˜æ•ˆç®¡ç†å’ŒçŠ¶æ€è·Ÿè¸ªçš„ç›®çš„
         */
         // #define fGLOBAL_LOOKASIDE_INITIALIZED 0x0002
         GlobalData.Flags |= fGLOBAL_LOOKASIDE_INITIALIZED;
 
         //
         // Fill in the Miniport characteristics structure with the version numbers
-        // and the entry points for driver-supplied MiniportXxx(Ìî³ä×¢²áËùÐèµÄÊý¾Ý½á¹¹)
+        // and the entry points for driver-supplied MiniportXxx(å¡«å……æ³¨å†Œæ‰€éœ€çš„æ•°æ®ç»“æž„)
         //
 
         NdisZeroMemory(&MPChar, sizeof(MPChar));
@@ -188,9 +188,9 @@ Arguments:
         // By calling NdisMRegisterMiniportDriver, the driver indicates that it
         // is ready for NDIS to call the driver's MiniportSetOptions and
         // MiniportInitializeEx handlers.
-        // 
-        // Miniport Driver/DriverEntry Í¨¹ýµ÷ÓÃ NdisMRegisterMiniportDriver 
-        // Ïò NDIS ×¢²áÒ»×é MiniportXxx º¯Êý
+        //
+        // Miniport Driver/DriverEntry é€šè¿‡è°ƒç”¨ NdisMRegisterMiniportDriver
+        // å‘ NDIS æ³¨å†Œä¸€ç»„ MiniportXxx å‡½æ•°
         //
         DEBUGP(MP_LOUD, "Calling NdisMRegisterMiniportDriver...\n");
         NDIS_DECLARE_MINIPORT_DRIVER_CONTEXT(MP_GLOBAL);
@@ -199,13 +199,13 @@ Arguments:
                 RegistryPath,
                 &GlobalData,
                 &MPChar,
-                &NdisDriverHandle); // ¶ÔÓÚÊä³ö²ÎÊý NdisDriverHandle, ±ØÐë´«ÈëÆäÖ¸ÕëÒÔ±ãÔÚº¯ÊýÄÚÐÞ¸ÄÆäÄÚÈÝ
+                &NdisDriverHandle); // å¯¹äºŽè¾“å‡ºå‚æ•° NdisDriverHandle, å¿…é¡»ä¼ å…¥å…¶æŒ‡é’ˆä»¥ä¾¿åœ¨å‡½æ•°å†…ä¿®æ”¹å…¶å†…å®¹
         if (NDIS_STATUS_SUCCESS != Status)
         {
             DEBUGP(MP_ERROR, "NdisMRegisterMiniportDriver failed: %d\n", Status);
             DriverUnload(DriverObject);
             Status = NDIS_STATUS_FAILURE;
-            break; // Ìø³ö while Ñ­»·
+            break; // è·³å‡º while å¾ªçŽ¯
         }
         // #define fGLOBAL_MINIPORT_REGISTERED   0x0004
         GlobalData.Flags |= fGLOBAL_MINIPORT_REGISTERED;
@@ -242,7 +242,7 @@ Routine Description:
     NdisMRegisterMiniportDriver. Note that an unload handler differs from
     a MiniportHalt function in that this unload handler releases resources that
     are global to the driver, while the halt handler releases resource for a
-    particular adapter(DriverUnload º¯ÊýÊÍ·Å¶ÔÓÚÇý¶¯µÄÈ«¾Ö×ÊÔ´).
+    particular adapter(DriverUnload å‡½æ•°é‡Šæ”¾å¯¹äºŽé©±åŠ¨çš„å…¨å±€èµ„æº).
 
     Runs at IRQL = PASSIVE_LEVEL.
 
@@ -270,7 +270,7 @@ Return Value:
     ASSERT(IsListEmpty(&GlobalData.AdapterList));
 
     /*
-        ÏÂÃæÁ¬ÐøÈý¸ö·ÖÖ§Óï¾äÍ¨¹ýÅÐ¶ÏÌØ¶¨Î»µÄ×´Ì¬À´¾ö¶¨ÊÇ·ñÖ´ÐÐÏà¹Ø²Ù×÷
+        ä¸‹é¢è¿žç»­ä¸‰ä¸ªåˆ†æ”¯è¯­å¥é€šè¿‡åˆ¤æ–­ç‰¹å®šä½çš„çŠ¶æ€æ¥å†³å®šæ˜¯å¦æ‰§è¡Œç›¸å…³æ“ä½œ
     */
     if (GlobalData.Flags & fGLOBAL_MINIPORT_REGISTERED)
     {
@@ -308,7 +308,7 @@ Routine Description:
 
     The MiniportSetOptions function registers optional handlers.  For each
     optional handler that should be registered, this function makes a call
-    to NdisSetOptionalHandlers(×¢²á¿ÉÑ¡µÄ Handler).
+    to NdisSetOptionalHandlers(æ³¨å†Œå¯é€‰çš„ Handler).
 
     MiniportSetOptions runs at IRQL = PASSIVE_LEVEL.
 
@@ -326,7 +326,7 @@ Return Value:
     PMP_GLOBAL Global = (PMP_GLOBAL)DriverContext;
 
     DEBUGP(MP_TRACE, "---> MPSetOptions\n");
-    // ±ê¼ÇÎ´Ê¹ÓÃµÄ²ÎÊý£¬±ÜÃâ±àÒëÆ÷·¢³ö¾¯¸æ
+    // æ ‡è®°æœªä½¿ç”¨çš„å‚æ•°ï¼Œé¿å…ç¼–è¯‘å™¨å‘å‡ºè­¦å‘Š
     UNREFERENCED_PARAMETER(DriverHandle);
     UNREFERENCED_PARAMETER(Global);
 
@@ -341,7 +341,7 @@ Return Value:
     return Status;
 }
 
-// ¼ì²é¸ø¶¨µÄ Adapter ÊÇ·ñÒÑ¾­Á¬½Óµ½ GlobalData.AdapterList ÖÐ
+// æ£€æŸ¥ç»™å®šçš„ Adapter æ˜¯å¦å·²ç»è¿žæŽ¥åˆ° GlobalData.AdapterList ä¸­
 BOOLEAN
 MPIsAdapterAttached(
     _In_ PMP_ADAPTER Adapter)
@@ -354,19 +354,19 @@ MPIsAdapterAttached(
     {
         if(CurrentEntry == &Adapter->List)
         {
-            return TRUE; // Adapter ÒÑÁ¬½Ó
+            return TRUE; // Adapter å·²è¿žæŽ¥
         }
     }
 
     return FALSE;
 }
 
-// ½«¸ø¶¨µÄ Adapter Á´½Óµ½ GlobalData.AdapterList ÖÐ
+// å°†ç»™å®šçš„ Adapter é“¾æŽ¥åˆ° GlobalData.AdapterList ä¸­
 VOID
 MPAttachAdapter(
     _In_  PMP_ADAPTER Adapter)
 {
-    MP_LOCK_STATE LockState;    
+    MP_LOCK_STATE LockState;
 
     DEBUGP(MP_TRACE, "[%p] ---> MPAttachAdapter\n", Adapter);
 
@@ -374,7 +374,7 @@ MPAttachAdapter(
 
     if(!MPIsAdapterAttached(Adapter))
     {
-        // Èç¹û¸ø¶¨µÄ Adapter ²»ÔÚ GlobalData.AdapterList ÖÐ£¬¾ÍÖ´ÐÐ»·ÐÎÁ´±íµÄ²åÈë²Ù×÷
+        // å¦‚æžœç»™å®šçš„ Adapter ä¸åœ¨ GlobalData.AdapterList ä¸­ï¼Œå°±æ‰§è¡ŒçŽ¯å½¢é“¾è¡¨çš„æ’å…¥æ“ä½œ
         InsertTailList(&GlobalData.AdapterList, &Adapter->List);
     }
 
@@ -383,7 +383,7 @@ MPAttachAdapter(
     DEBUGP(MP_TRACE, "[%p] <--- MPAttachAdapter\n", Adapter);
 }
 
-// ½«¸ø¶¨µÄ Adapter ´Ó GlobalData.AdapterList ÖÐÒÆ³ý
+// å°†ç»™å®šçš„ Adapter ä»Ž GlobalData.AdapterList ä¸­ç§»é™¤
 VOID
 MPDetachAdapter(
     _In_  PMP_ADAPTER Adapter)
@@ -395,7 +395,7 @@ MPDetachAdapter(
 
     if(MPIsAdapterAttached(Adapter))
     {
-        // Èç¹û¸ø¶¨µÄ Adapter ÔÚ GlobalData.AdapterList ÖÐ£¬¾ÍÖ´ÐÐ»·ÐÎÁ´±íµÄÉ¾³ý²Ù×÷
+        // å¦‚æžœç»™å®šçš„ Adapter åœ¨ GlobalData.AdapterList ä¸­ï¼Œå°±æ‰§è¡ŒçŽ¯å½¢é“¾è¡¨çš„åˆ é™¤æ“ä½œ
         RemoveEntryList(&Adapter->List);
     }
 

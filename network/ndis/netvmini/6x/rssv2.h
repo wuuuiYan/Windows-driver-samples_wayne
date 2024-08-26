@@ -30,8 +30,8 @@ Revision History:
          sizeof(PROCESSOR_NUMBER))
 
 //
-// This define controls if QueueMap's functionality of the rssv2lib will
-// be compiled-in.
+// This define controls if QueueMap's functionality of the rssv2lib will be compiled-in.
+// 下述定义控制是否将 rssv2lib 的 QueueMap 功能编译进来。
 //
 #define RSSV2_MAX_NUMBER_OF_PROCESSORS_IN_RSS_TABLE 64
 

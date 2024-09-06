@@ -51,10 +51,15 @@ Notes:
 typedef struct _MP_ADAPTER_RECEIVE_DPC
 {
     LIST_ENTRY Entry;
+
     //
     // Kernel DPC used for recieve
     //
     KDPC Dpc;
+
+	//
+	// processor affinity of the DPC
+	//
     USHORT ProcessorGroup;
     ULONG ProcessorNumber;
 
@@ -85,13 +90,14 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
 
 //
 // This structure is used to track pending receives on the adpater (consumed by receive DPCs).
-// One receive block maintained for each VMQ queue (if enabled), otherwise
-// a single structure is used to track receives on the adapter.
+// One receive block maintained for each VMQ queue (if enabled),
+// otherwise a single structure is used to track receives on the adapter.
 //
 typedef struct DECLSPEC_CACHEALIGN _MP_ADAPTER_RECEIVE_BLOCK
 {
     //
     // List of pending RCB blocks that need to be indicated up to NDIS
+	// 需要向上传递至 NDIS 的待处理 RCB 块链表
     //
     LIST_ENTRY ReceiveList;
     NDIS_SPIN_LOCK ReceiveListLock;
@@ -100,7 +106,7 @@ typedef struct DECLSPEC_CACHEALIGN _MP_ADAPTER_RECEIVE_BLOCK
 
 //
 // Each adapter managed by this driver has a MP_ADAPTER struct.
-// 被驱动程序管理的每个适配器都有一个 MP_ADAPTER 结构。
+// 被此 driver 管理的每个 adapter 都有一个 MP_ADAPTER 结构。
 //
 typedef struct _MP_ADAPTER
 {
@@ -118,7 +124,7 @@ typedef struct _MP_ADAPTER
 
 
     //
-    // Status flags
+    // Status flags(状态标志)
     //
 
 #define fMP_RESET_IN_PROGRESS               0x00000001 // 重置正在进行
@@ -139,6 +145,7 @@ typedef struct _MP_ADAPTER
     // Send tracking
     // -------------------------------------------------------------------------
     // TCB = Transmit Control Block
+	//
 
     // Pool of unused TCBs
     PVOID                   TcbMemoryBlock; // 未使用的 TCB 内存池
@@ -148,7 +155,7 @@ typedef struct _MP_ADAPTER
     NDIS_SPIN_LOCK          FreeTcbListLock; // 用于保护未使用的 TCB 链表的自旋锁
 
     // List of net buffers to send that are waiting for a free TCB
-    LIST_ENTRY              SendWaitList;     // 发送 等待释放的 TCB 的网络缓冲区链表
+    LIST_ENTRY              SendWaitList;     // 用于发送 等待释放的 TCB 的网络缓冲区链表
     NDIS_SPIN_LOCK          SendWaitListLock; // 用于保护发送 等待释放的 TCB 的网络缓冲区链表
 
     // List of TCBs that are being read by the NIC hardware
@@ -177,6 +184,7 @@ typedef struct _MP_ADAPTER
     // Receive tracking
     // -------------------------------------------------------------------------
     // RCB = Receive Control Block
+	//
 
     // Pool of unused RCBs
     PVOID                   RcbMemoryBlock; // 未使用的 RCB 内存池
@@ -188,8 +196,8 @@ typedef struct _MP_ADAPTER
     NDIS_HANDLE             RecvNblPoolHandle; // 接收网络缓冲区池句柄
 
     //
-    // List of receive DPCs allocated for various ProcessorAffinity values (if only
-    // one needed, then only default is present in the list
+    // List of receive DPCs allocated for various ProcessorAffinity values
+    // (if only one needed, then only default is present in the list)
     //
     LIST_ENTRY               RecvDpcList;     // 接收 DPC 链表，用于处理不同的处理器亲和性
     NDIS_SPIN_LOCK           RecvDpcListLock; // 用于保护接收 DPC 链表的自旋锁
@@ -268,9 +276,9 @@ typedef struct _MP_ADAPTER
     ULONG                   UnalignedAdapterBufferSize; // 未对齐的适配器内存缓冲区大小
 
     //
-    // Tracks any pending NBLs for the particular receiver (either
-    // 0 for non-VMQ scenarios, or the corresponding VMQ queue).
-    // These are consumed by the receive DPCs(被接收 CPC 处理).
+    // Tracks any pending NBLs for the particular receiver
+    // (either 0 for non-VMQ scenarios, or the corresponding VMQ queue).
+    // These are consumed by the receive DPCs(被接收 DPC 处理).
     //
     MP_ADAPTER_RECEIVE_BLOCK ReceiveBlock[NIC_SUPPORTED_NUM_QUEUES]; // 用于追踪每一个接收队列的 NBL
 

@@ -112,7 +112,7 @@ Return Value:
 }
 
 /*
-	SAL（Source Annotation Language）标注用于在 Windows 驱动程序开发中指示函数的调用要求
+	SAL(Source Annotation Language) 标注用于在 Windows 驱动程序开发中指示函数的调用要求
 	具体来说，这个宏表明函数 InitializeRSSConfig 应当在 IRQL 为 PASSIVE_LEVEL 时被调用
 	PASSIVE_LEVEL 是最低级别的 IRQL，允许所有类型的操作，包括分页内存访问、睡眠阻塞操作、内核态与用户态间的切换等
 */
@@ -147,6 +147,8 @@ Return Value:
     Status = NdisGetRssProcessorInformation(Adapter->AdapterHandle,
                                             NULL,
                                             &RssInfoSize);
+	// retrieves information about the set of processors that a miniport driver must use for RSS.
+	// 第一次调用，传入空指针 NULL，将 RssInfoSize 设置为所需的缓冲区大小
 
     if (Status != NDIS_STATUS_BUFFER_TOO_SHORT)
     {
@@ -171,6 +173,12 @@ Return Value:
     Status = NdisGetRssProcessorInformation(Adapter->AdapterHandle,
                                             Adapter->RSSData.RssProcessorInfo,
                                             &RssInfoSize);
+	// 第二次调用，传入刚才预分配好大小的内存，RSS 处理器信息被填入 Adapter->RSSData.RssProcessorInfo 所指向的缓冲区中
+	/*
+	调用了两次 NdisGetRssProcessorInformation 函数，双阶段查询模式的好处：
+		内存分配的精确性：第一次调用确定准确的内存大小，然后分配正确大小的缓冲区，不会浪费内存。
+		简化代码处理逻辑：避免在调用的时候提前估计内存大小可能带来的重复分配或分配不正确的问题。
+	*/
 
     if (Status != NDIS_STATUS_SUCCESS)
     {
@@ -578,7 +586,10 @@ NICSetRSSv2Parameters(
 Routine Description:
 
     This routine handles OID_GEN_RECEIVE_SCALE_PARAMETERS_V2 set request.
-	Overlying driver -> miniport driver：哈希函数、哈希类型等的 OID 设置请求
+	Overlying driver -> miniport driver：设置哈希函数、哈希类型等的 OID 请求
+	This OID is Regular OID which has been introduced in RSSv2.
+	This OID is a Query and a Set OID used for configuring the scaling entity's parameters
+	such as the number of queues, the number of ITEs, RSS enablement/disablement, and hash key updates.
 
 Arguments:
 
@@ -935,6 +946,8 @@ NICSetRSSv2IndirectionTableEntries(
 Routine Description:
 
     This routine handles OID_GEN_RSS_SET_INDIRECTION_TABLE_ENTRIES method request.
+	This OID is a Method OID used to perform modification of indirection table entries.
+	This OID is a Synchronous OID that cannot return NDIS_STATUS_PENDING.
 
 Arguments:
 

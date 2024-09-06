@@ -122,7 +122,7 @@ Arguments:
                 NIC_TAG_FRAME,
                 0); // Reserved for system use
         /*
-            |= 操作可以将 GlobalData.Flags 的某些特定位置1，达到高效管理和状态跟踪的目的
+            |=(按位或) 操作可以将 GlobalData.Flags 的某些特定位置1，达到高效管理和状态跟踪的目的
         */
         // #define fGLOBAL_LOOKASIDE_INITIALIZED 0x0002
         GlobalData.Flags |= fGLOBAL_LOOKASIDE_INITIALIZED;
@@ -473,11 +473,13 @@ DbgPrintOidName(
 
     switch (Oid){
 
-        #undef MAKECASE
+        #undef MAKECASE // 取消(undefine)了之前可能定义过的 MAKECASE 宏，以确保重新定义时没有冲突
         #define MAKECASE(oidx) case oidx: oidName = #oidx "\n"; break;
+		// #oidx 是字符串化操作符，它会将宏参数变成一个字符串字面值。
+		// 例如，如果传递的是 OID_GEN_SUPPORTED_LIST，则 #oidx 会变成 "OID_GEN_SUPPORTED_LIST"。
 
         /* Operational OIDs */
-        MAKECASE(OID_GEN_SUPPORTED_LIST)
+        MAKECASE(OID_GEN_SUPPORTED_LIST) // case OID_GEN_SUPPORTED_LIST: oidName = "OID_GEN_SUPPORTED_LIST\n"; break;
         MAKECASE(OID_GEN_HARDWARE_STATUS)
         MAKECASE(OID_GEN_MEDIA_SUPPORTED)
         MAKECASE(OID_GEN_MEDIA_IN_USE)
@@ -604,13 +606,18 @@ DbgPrintOidName(
         MAKECASE(OID_IP4_OFFLOAD_STATS)
         MAKECASE(OID_IP6_OFFLOAD_STATS)
 
-        /* TCP offload OIDs for NDIS 6 */
+        /* TCP offload(外移) OIDs for NDIS 6 */
         MAKECASE(OID_TCP_OFFLOAD_CURRENT_CONFIG)
+		/*
+		Use the OID_TCP_OFFLOAD_PARAMETERS OID to enable capabilities that
+		the OID_TCP_OFFLOAD_CURRENT_CONFIG OID or OID_TCP_CONNECTION_OFFLOAD_CURRENT_CONFIG OID
+		reports as not currently enabled.
+		*/
         MAKECASE(OID_TCP_OFFLOAD_PARAMETERS)
         MAKECASE(OID_TCP_OFFLOAD_HARDWARE_CAPABILITIES)
         MAKECASE(OID_TCP_CONNECTION_OFFLOAD_CURRENT_CONFIG)
         MAKECASE(OID_TCP_CONNECTION_OFFLOAD_HARDWARE_CAPABILITIES)
-        MAKECASE(OID_OFFLOAD_ENCAPSULATION)
+        MAKECASE(OID_OFFLOAD_ENCAPSULATION) NDIS_BIND_PARAMETERS
 
 #if (NDIS_SUPPORT_NDIS620)
         /* VMQ OIDs for NDIS 6.20 */

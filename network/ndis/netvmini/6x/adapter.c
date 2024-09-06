@@ -13,18 +13,18 @@ Module Name:
 
 Abstract:
 
-    The purpose of this sample is to illustrate functionality of a deserialized(串行化)
+    The purpose of this sample is to illustrate functionality of a deserialized(并行化)
     NDIS miniport driver without requiring a physical network adapter. This
     sample is based on E100BEX sample present in the DDK. It is basically a
     simplified version of E100bex driver. The driver can be installed either
-    manually using Add Hardware wizard as a root enumerated virtual miniport
+    manually using Add Hardware wizard(硬件添加向导) as a root enumerated virtual miniport
     driver or on a virtual bus (like toaster bus). Since the driver does not
     interact with any hardware, it makes it very easy to understand the miniport
     interface and the usage of various NDIS functions without the clutter of
     hardware specific code normally found in a fully functional driver.
 
     This sample provides an example of minimal driver intended for education
-    purposes. Neither the driver or its sample test programs are intended
+    purposes. Neither the driver nor its sample test programs are intended
     for use in a production environment.
 
 Revision History:
@@ -33,6 +33,7 @@ Notes:
 
 --*/
 
+#include <ndis.h>
 #include "netvmin6.h"
 #include "adapter.tmh"
 
@@ -68,8 +69,15 @@ NICScheduleTheResetOrPauseDpc(
     _In_  PMP_ADAPTER  Adapter,
     _In_  BOOLEAN      fReschedule);
 
+//
+// Declare a function pointer named NICAsyncResetOrPauseDpc which points to a function of type NDIS_TIMER_FUNCTION
+// 声明一个名为 NICAsyncResetOrPauseDpc 的函数指针, 该指针指向一个 NDIS_TIMER_FUNCTION 类型的函数
+//
 NDIS_TIMER_FUNCTION NICAsyncResetOrPauseDpc;
 
+//
+// 标记函数，使其在分页内存中运行
+//
 #pragma NDIS_PAGEABLE_FUNCTION(MPInitializeEx)
 #pragma NDIS_PAGEABLE_FUNCTION(MPPause)
 #pragma NDIS_PAGEABLE_FUNCTION(MPRestart)
@@ -131,6 +139,11 @@ NDIS_OID NICSupportedOids[] =
 #endif
 };
 
+/*
+* typedef PVOID NDIS_HANDLE, *PNDIS_HANDLE;
+* NDIS_HANDLE 是 PVOID 类型的别名。PVOID 是一个指向 void 的指针，这意味着它可以指向任何类型的数据
+* PNDIS_HANDLE 是一个指向 NDIS_HANDLE 的指针的别名，PNDIS_HANDLE实际上是一个指向指针的指针
+*/
 
 NDIS_STATUS
 MPInitializeEx(
@@ -149,13 +162,13 @@ Routine Description:
 
 Arguments:
 
-    Return Value:
+Return Value:
 
     NDIS_STATUS_xxx code
 
 --*/
 {
-    NDIS_STATUS          Status = NDIS_STATUS_SUCCESS;
+    NDIS_STATUS Status = NDIS_STATUS_SUCCESS;
     PMP_ADAPTER Adapter = NULL;
 
 
@@ -168,7 +181,9 @@ Arguments:
     {
         NDIS_MINIPORT_ADAPTER_REGISTRATION_ATTRIBUTES AdapterRegistration = {0};
         NDIS_MINIPORT_ADAPTER_GENERAL_ATTRIBUTES AdapterGeneral = {0};
-
+//
+// Pm = Power Management, Pnp = Plug and Play
+//
 #if (NDIS_SUPPORT_NDIS620)
         NDIS_PM_CAPABILITIES PmCapabilities;
 #elif (NDIS_SUPPORT_NDIS6)
@@ -233,10 +248,10 @@ Arguments:
 
         //
         // NdisMGetDeviceProperty function enables us to get the:
-        // PDO - created by the bus driver to represent our device.
-        // FDO - created by NDIS to represent our miniport as a function driver.
-        // NextDeviceObject - deviceobject of another driver (filter)
-        //                      attached to us at the bottom.
+        // 		PDO - created by the bus driver to represent our device.
+        // 		FDO - created by NDIS to represent our miniport as a function driver.
+        // 		NextDeviceObject - deviceobject of another driver (filter) attached to us at the bottom.
+		//
         // In a pure NDIS miniport driver, there is no use for this
         // information, but a NDISWDM driver would need to know this so that it
         // can transfer packets to the lower WDM stack using IRPs.
@@ -250,11 +265,11 @@ Arguments:
                 NULL);
 
         //
-        // Allocate default DPC, using current processor information (this will be
-        // added to the DPC list by the allocation function). The default DPC
-        // is used for all receives when VMQ is not enabled, and for the default queue
-        // when VMQ is enabled.
-        //
+        // Allocate default DPC, using current processor information
+        // (this will be added to the DPC list by the allocation function).
+        // The default DPC is used for all receives when VMQ is not enabled,
+        // and for the default queue when VMQ is enabled.
+		//
         Adapter->DefaultRecvDpc = NICAllocReceiveDpc(Adapter, 0, 0, 0);
         if(!Adapter->DefaultRecvDpc)
         {
@@ -1173,7 +1188,7 @@ Arguments:
     MiniportAdapterHandle       NDIS handle for the adapter.
     pAdapter                    Receives the allocated and initialized adapter memory.
 
-    Return Value:
+Return Value:
 
     NDIS_STATUS_xxx code
 
@@ -1200,9 +1215,12 @@ Arguments:
         ULONG UnalignedAdapterBufferSize = sizeof(MP_ADAPTER)+ NdisGetSharedDataAlignment();
         NDIS_TIMER_CHARACTERISTICS Timer;
 
-        //
+        // The NdisAllocateMemoryWithTagPriority function allocates a pool of memory from the non-paged pool.
+		// NdisAllocateMemoryWithTagPriority returns a pointer to a base virtual address of the allocated memory,
+		// or NULL if sufficient nonpaged memory is currently unavailable.
+
         // Allocate memory for adapter context (unaligned)
-        //
+		//
         UnalignedAdapterBuffer = NdisAllocateMemoryWithTagPriority(
                 NdisDriverHandle,
                 UnalignedAdapterBufferSize,
@@ -1221,7 +1239,7 @@ Arguments:
         NdisZeroMemory(UnalignedAdapterBuffer, UnalignedAdapterBufferSize);
 
         //
-        // Start the Adapter pointer at a cache-aligned boundary
+        // Start the Adapter pointer at a cache-aligned boundary(边界、范围)
         //
         Adapter = ALIGN_UP_POINTER_BY(UnalignedAdapterBuffer, NdisGetSharedDataAlignment());
 
@@ -1239,8 +1257,7 @@ Arguments:
         NdisInitializeListHead(&Adapter->List);
 
         //
-        // Initialize Send & Recv listheads and corresponding
-        // spinlocks.
+        // Initialize Send & Recv listheads and corresponding spinlocks.
         //
         NdisInitializeListHead(&Adapter->FreeTcbList);
         NdisAllocateSpinLock(&Adapter->FreeTcbListLock);
@@ -1251,10 +1268,11 @@ Arguments:
         NdisInitializeListHead(&Adapter->BusyTcbList);
         NdisAllocateSpinLock(&Adapter->BusyTcbListLock);
 
+		// 前缀为 Ke，表明这是一个内核函数
         KeInitializeSpinLock(&Adapter->SendPathSpinLock);
 
         //
-        // Set the default lookahead buffer size.
+        // Set the default lookahead(预读取) buffer size.
         //
         Adapter->ulLookahead = NIC_MAX_LOOKAHEAD;
 
@@ -1275,6 +1293,9 @@ Arguments:
             break;
         }
 
+		//
+		// initialize the send control block and insert it into the FreeTcbList
+		//
         for (index = 0; index < NIC_MAX_BUSY_SENDS; index++)
         {
             NdisInterlockedInsertTailList(
@@ -1316,7 +1337,7 @@ Arguments:
         }
 
         //
-        // Initialize DPC list data
+        // Initialize DPC list data and spinlock
         //
         NdisInitializeListHead(&Adapter->RecvDpcList);
         NdisAllocateSpinLock(&Adapter->RecvDpcListLock);
@@ -1360,8 +1381,7 @@ Arguments:
 
     //
     // In the failure case, the caller of this routine will end up
-    // calling NICFreeAdapter to free all the successfully allocated
-    // resources.
+    // calling NICFreeAdapter to free all the successfully allocated resources.
     //
     DEBUGP(MP_TRACE, "[%p] <--- NICAllocAdapter\n", Adapter);
     return Status;
@@ -1624,7 +1644,7 @@ Arguments:
     ProcessorGroup              Target processor group for the DPC (if not Win7, set to 0)
     QueueId                     Queue whose receives the DPC should consume (0 for non-VMQ scenarios)
 
-    Return Value:
+Return Value:
 
     PMP_ADAPTER_RECEIVE_DPC structure on success.
     NULL on failure.
@@ -1671,8 +1691,8 @@ Arguments:
         }
 
         //
-        // Make sure the target DPC list starts getting processed as soon as it's queued even if was queued from
-        // another processor.
+        // Make sure the target DPC list starts getting processed as soon as it's queued
+        // even if was queued from another processor.
         //
         KeSetImportanceDpc(&ReceiveDpc->Dpc, MediumHighImportance);
 
@@ -1701,8 +1721,8 @@ Arguments:
         ReceiveDpc->ProcessorNumber = ProcessorNumber;
 
         //
-        // Check if it's already on the list, if it is, return existing Dpc and free this one
-        // otherwise, add to the adapter's DPC list.
+        // Check if it's already on the list, if it is, return existing Dpc
+        // and free this one, otherwise, add to the adapter's DPC list.
         //
         NdisAcquireSpinLock(&Adapter->RecvDpcListLock);
 
@@ -1999,8 +2019,7 @@ Return Value:
 
 
     //
-    // Read all of our configuration parameters using NdisReadConfiguration
-    // and parse the value.
+    // Read all of our configuration parameters using NdisReadConfiguration and parse the value.
     //
     NICSetMacAddress(Adapter, ConfigurationHandle);
 
@@ -2047,7 +2066,7 @@ NICSetMacAddress(
 /*++
 Routine Description:
 
-    Configures the NIC with the correct permanent and current MAC addresses.
+    Configures the NIC with the correct permanent(永久的) and current MAC addresses.
     If no permanent address is saved, generate a new one.
 
     IRQL = PASSIVE_LEVEL
@@ -2080,14 +2099,14 @@ Return Value:
 
     //
     // Now seed the current MAC address with the permanent address.
+	// #define NIC_COPY_ADDRESS(_dest,_src)       ETH_COPY_NETWORK_ADDRESS(_dest,_src)
     //
     NIC_COPY_ADDRESS(Adapter->CurrentAddress, Adapter->PermanentAddress);
 
 
     //
     // Read NetworkAddress registry value and use it as the current address
-    // if there is a software configurable NetworkAddress specified in
-    // the registry.
+    // if there is a software configurable NetworkAddress specified in the registry.
     //
     NdisReadNetworkAddress(
             &Status,

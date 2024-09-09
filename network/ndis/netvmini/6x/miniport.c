@@ -185,8 +185,8 @@ Arguments:
         // The miniport driver must retain this handle but it should never attempt
         // to access or interpret this handle.
         //
-        // By calling NdisMRegisterMiniportDriver, the driver indicates that it
-        // is ready for NDIS to call the driver's MiniportSetOptions and
+        // By calling NdisMRegisterMiniportDriver, the driver indicates(向上传递消息)
+        // that it is ready for NDIS to call the driver's MiniportSetOptions and
         // MiniportInitializeEx handlers.
         //
         // Miniport Driver/DriverEntry 通过调用 NdisMRegisterMiniportDriver
@@ -352,7 +352,7 @@ MPIsAdapterAttached(
             CurrentEntry != &GlobalData.AdapterList;
             CurrentEntry = CurrentEntry->Flink)
     {
-        if(CurrentEntry == &Adapter->List)
+        if (CurrentEntry == &Adapter->List)
         {
             return TRUE; // Adapter 已连接
         }

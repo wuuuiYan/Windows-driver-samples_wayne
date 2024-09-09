@@ -1605,18 +1605,18 @@ NICStopTheDatapath(
 
 Routine Description:
 
-    This function prevents future sends and receives on the data path, then
-    prepares the adapter to reach an idle state.
+    This function prevents future sends and receives on the data path,
+    then prepares the adapter to reach an idle state.
 
     Although the adapter is entering an idle state, there may still be
-    outstanding NBLs that haven't been returned by a protocol.  Call NICIsBusy
-    to check if NBLs are still outstanding.
+    outstanding NBLs that haven't been returned by a protocol.
+    Call NICIsBusy to check if NBLs are still outstanding.
 
     Runs at IRQL == PASSIVE_LEVEL.
 
 Arguments:
 
-    Adapter                     Pointer to our adapter
+    Adapter                     - Pointer to our adapter
 
 Return Value:
 

@@ -22,8 +22,6 @@ Notes:
 --*/
 
 
-
-
 //
 // Utility macros
 // -----------------------------------------------------------------------------
@@ -34,6 +32,11 @@ Notes:
 #define MP_TEST_FLAG(_M, _F)            (((_M)->Flags & (_F)) != 0)
 #define MP_TEST_FLAGS(_M, _F)           (((_M)->Flags & (_F)) == (_F))
 
+
+//
+// return true if the adapter is not in the six states: reset, disconnected, halted, paused, low power, or pause in progress
+// return false if the adapter is in the the six states: reset, disconnected, halted, paused, low power, or pause in progress
+//
 #define MP_IS_READY(_M)        (((_M)->Flags &                             \
                                  (fMP_DISCONNECTED                         \
                                     | fMP_RESET_IN_PROGRESS                \
@@ -55,10 +58,10 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
     //
     // Kernel DPC used for recieve
     //
-    KDPC Dpc;
+    KDPC Dpc; // 《Windows内核情景分析》P770
 
 	//
-	// processor affinity of the DPC
+	// Processor affinity of the DPC
 	//
     USHORT ProcessorGroup;
     ULONG ProcessorNumber;
@@ -66,8 +69,8 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
     //
     // Tracks which receive blocks need to be recieved on this DPC.
     //
-    BOOLEAN RecvBlock[NIC_SUPPORTED_NUM_QUEUES];
-    volatile LONG RecvBlockCount;
+    BOOLEAN RecvBlock[NIC_SUPPORTED_NUM_QUEUES]; // 表示每个接收队列的状态
+    volatile LONG RecvBlockCount; // 跟踪当前被阻塞的接收队列的数量
 
     //
     // Sets up the maximum amount of NBLs that can be indicated by a single
@@ -76,10 +79,10 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
     ULONG MaxNblCountPerIndicate;
 
     //
-    // Work item used if we need to avoid DPC timeout
+    // Work item used if we need to avoid DPC timeout(超时)
     //
     NDIS_HANDLE WorkItem;
-    volatile LONG WorkItemQueued;
+    volatile LONG WorkItemQueued; // 表示 WorkItem 是否已队列
 
     //
     // Pointer back to owner Adapter structure (accesed within work item)
@@ -376,7 +379,12 @@ NICIsBusy(
 
 
 #define RECEIVE_BLOCK_REFERENCE_COUNT(Adapter, BlockIndex) Adapter->ReceiveBlock[BlockIndex].PendingReceives
-#define RECEIVE_BLOCK_IS_BUSY(Adapter, BlockIndex) Adapter->ReceiveBlock[BlockIndex].PendingReceives!=0
+
+
+//
+// return ture if the receive block is busy
+//
+#define RECEIVE_BLOCK_IS_BUSY(Adapter, BlockIndex) Adapter->ReceiveBlock[BlockIndex].PendingReceives != 0
 
 // Prototypes for standard NDIS miniport entry points
 MINIPORT_INITIALIZE                 MPInitializeEx;
@@ -392,4 +400,3 @@ MINIPORT_RESET                      MPResetEx;
 MINIPORT_DEVICE_PNP_EVENT_NOTIFY    MPDevicePnpEventNotify;
 MINIPORT_SHUTDOWN                   MPShutdownEx;
 MINIPORT_CANCEL_OID_REQUEST         MPCancelOidRequest;
-

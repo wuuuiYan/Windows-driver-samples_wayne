@@ -209,10 +209,10 @@ Abstract:
     }
 
 //
-// The driver has exactly one instance of the MP_GLOBAL structure.  NDIS keeps
-// an opaque handle to this data, (it doesn't attempt to read or interpret this
-// data), and it(NDIS) passes the handle back to the miniport in MiniportSetOptions
-// and MiniportInitializeEx.
+// The driver has exactly one instance of the MP_GLOBAL structure.
+// NDIS keeps an opaque(不透明的、不可见的) handle to this data, (it doesn't
+// attempt to read or interpret this data), and it(NDIS) passes the handle back to
+// the miniport in MiniportSetOptions and MiniportInitializeEx.
 //
 typedef struct _MP_GLOBAL
 {

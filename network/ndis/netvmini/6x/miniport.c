@@ -71,12 +71,15 @@ Routine Description:
     itself with NDIS, specifies the NDIS version that it is using, and
     registers its entry points(与 NDIS 关联、指定 NDIS 版本、注册入口点).
 
+Calling relationship:
+
+	DriverEntry()	->
 
 Arguments:
     PVOID DriverObject - pointer to the driver object(ָ指向驱动对象的指针).
     PVOID RegistryPath - pointer to the driver registry path(指向驱动注册表路径的指针).
 
-    Return Value:
+Return Value:
 
     NTSTATUS code
 
@@ -85,11 +88,11 @@ Arguments:
     NDIS_STATUS Status;
     // NDIS_MINIPORT_DRIVER_CHARACTERISTICS structure to define its miniport driver characteristics,
     // including the entry points for its MiniportXxx functions.
-    NDIS_MINIPORT_DRIVER_CHARACTERISTICS MPChar;
+    NDIS_MINIPORT_DRIVER_CHARACTERISTICS MPChar; // 《Windows内核情景分析》P961
 
     // The WPP_INIT_TRACING macro registers the provider GUID and initializes the structures
     // that are needed for software tracing in a kernel-mode driver.
-    WPP_INIT_TRACING(DriverObject,RegistryPath);
+    WPP_INIT_TRACING(DriverObject, RegistryPath);
 
     DEBUGP(MP_TRACE, "---> DriverEntry built on "__DATE__" at "__TIME__ "\n");
     PAGED_CODE();
@@ -109,10 +112,10 @@ Arguments:
         //
         NdisInitializeListHead(&GlobalData.AdapterList);
 
-
         //
         // The FrameDataLookaside list is used to help emulate an Ethernet hub(用于帮助模拟以太网集线器).
-        //  NdisInitializeNPagedLookasideList() initializes a lookaside list.
+        // NdisInitializeNPagedLookasideList() initializes a lookaside list.
+		//
         NdisInitializeNPagedLookasideList(
                 &GlobalData.FrameDataLookaside,
                 HWFrameAllocate,
@@ -182,8 +185,8 @@ Arguments:
         //
         // Associate the miniport driver with NDIS by calling the
         // NdisMRegisterMiniportDriver. This function returns an NdisDriverHandle.
-        // The miniport driver must retain this handle but it should never attempt
-        // to access or interpret this handle.
+        // The miniport driver must retain(保留、保存) this handle but it should never
+        // attempt to access or interpret this handle.
         //
         // By calling NdisMRegisterMiniportDriver, the driver indicates(向上传递消息)
         // that it is ready for NDIS to call the driver's MiniportSetOptions and
@@ -205,7 +208,7 @@ Arguments:
             DEBUGP(MP_ERROR, "NdisMRegisterMiniportDriver failed: %d\n", Status);
             DriverUnload(DriverObject);
             Status = NDIS_STATUS_FAILURE;
-            break; // 跳出 while 循环
+            break; // 跳出 while() 循环
         }
         // #define fGLOBAL_MINIPORT_REGISTERED   0x0004
         GlobalData.Flags |= fGLOBAL_MINIPORT_REGISTERED;
@@ -223,7 +226,7 @@ Arguments:
         }
         // #define fGLOBAL_LOCK_ALLOCATED        0x0001
         GlobalData.Flags |= fGLOBAL_LOCK_ALLOCATED;
-    }while(FALSE);
+    } while (FALSE);
 
     DEBUGP(MP_TRACE, "<--- DriverEntry Status 0x%08x\n", Status);
     return Status;
@@ -242,7 +245,7 @@ Routine Description:
     NdisMRegisterMiniportDriver. Note that an unload handler differs from
     a MiniportHalt function in that this unload handler releases resources that
     are global to the driver, while the halt handler releases resource for a
-    particular adapter(DriverUnload 函数释放对于驱动的全局资源).
+    particular adapter(DriverUnload 函数释放对于 driver 的全局资源，一个 driver 可能对应多个 adapter).
 
     Runs at IRQL = PASSIVE_LEVEL.
 
@@ -261,11 +264,9 @@ Return Value:
     DEBUGP(MP_TRACE, "---> DriverUnload\n");
     PAGED_CODE();
 
-
     //
     // Clean up all globals that were allocated in DriverEntry
     //
-
 
     ASSERT(IsListEmpty(&GlobalData.AdapterList));
 
@@ -326,16 +327,15 @@ Return Value:
     PMP_GLOBAL Global = (PMP_GLOBAL)DriverContext;
 
     DEBUGP(MP_TRACE, "---> MPSetOptions\n");
+
     // 标记未使用的参数，避免编译器发出警告
     UNREFERENCED_PARAMETER(DriverHandle);
     UNREFERENCED_PARAMETER(Global);
-
 
     //
     // Set any optional handlers by filling out the appropriate struct and
     // calling NdisSetOptionalHandlers here.
     //
-
 
     DEBUGP(MP_TRACE, "<--- MPSetOptions Status = 0x%08x\n", Status);
     return Status;
@@ -372,7 +372,7 @@ MPAttachAdapter(
 
     LOCK_ADAPTER_LIST_FOR_WRITE(&LockState, 0);
 
-    if(!MPIsAdapterAttached(Adapter))
+    if (!MPIsAdapterAttached(Adapter))
     {
         // 如果给定的 Adapter 不在 GlobalData.AdapterList 中，就执行环形链表的插入操作
         InsertTailList(&GlobalData.AdapterList, &Adapter->List);
@@ -393,7 +393,7 @@ MPDetachAdapter(
 
     LOCK_ADAPTER_LIST_FOR_WRITE(&LockState, 0);
 
-    if(MPIsAdapterAttached(Adapter))
+    if (MPIsAdapterAttached(Adapter))
     {
         // 如果给定的 Adapter 在 GlobalData.AdapterList 中，就执行环形链表的删除操作
         RemoveEntryList(&Adapter->List);

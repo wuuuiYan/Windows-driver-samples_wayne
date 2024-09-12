@@ -799,9 +799,9 @@ Routine Description:
 
 Arguments:
 
-    Adapter                     Pointer to our adapter
-    NetBufferList               The NBL to release
-    fAtDispatch                 TRUE if the current IRQL is DISPATCH_LEVEL
+    Adapter                     - Pointer to our adapter
+    NetBufferList               - The NBL to release
+    fAtDispatch                 - TRUE if the current IRQL is DISPATCH_LEVEL
 
 Return Value:
 
@@ -814,12 +814,17 @@ Return Value:
     {
         DEBUGP(MP_TRACE, "[%p] Send NBL %p complete.\n", Adapter, NetBufferList);
 
+		// NET_BUFFER_LIST_NEXT_NBL is a macro that NDIS drivers use to get the next
+		// NET_BUFFER_LIST structure in a linked list of NET_BUFFER_LIST structures.
         NET_BUFFER_LIST_NEXT_NBL(NetBufferList) = NULL;
 
+		// Miniport drivers call the NdisMSendNetBufferListsComplete function to
+		// return a linked list of NET_BUFFER_LIST structures to an overlying driver
+		// and to return the final status of a send request.
         NdisMSendNetBufferListsComplete(
                 Adapter->AdapterHandle,
                 NetBufferList,
-                fAtDispatch ? NDIS_SEND_COMPLETE_FLAGS_DISPATCH_LEVEL:0);
+                fAtDispatch ? NDIS_SEND_COMPLETE_FLAGS_DISPATCH_LEVEL : 0);
     }
     else
     {
@@ -1215,6 +1220,7 @@ Routine Description:
     timer DPC is not required when you are talking to a real device. In real
     miniports, this DPC is usually provided by NDIS as MPHandleInterrupt
     callback whenever the device interrupts for receive indication.
+	向上传递接收信息时具体的 DPC 函数
 
 Arguments:
 
@@ -1272,6 +1278,7 @@ Return Value:
     RXReceiveIndicate(AdapterDpc->Adapter, AdapterDpc, FALSE);
 }
 
+
 VOID
 RXReceiveIndicate(
     _In_ PMP_ADAPTER Adapter,
@@ -1287,9 +1294,10 @@ Routine Description:
 
 Arguments:
 
-    Adapter             Pointer to our adapter
-    AdapterDpc          PMP_ADAPTER_RECEIVE_DPC structure for this receive
-    AtDpc               TRUE if the function was called from the context of the DPC, FALSE if called from work item (to avoid watchdog)
+    Adapter             - Pointer to our adapter
+    AdapterDpc          - PMP_ADAPTER_RECEIVE_DPC structure for this receive
+    AtDpc               - TRUE if the function was called from the context of the DPC,
+						  FALSE if called from work item (to avoid watchdog)
 
 Return Value:
 
@@ -1399,7 +1407,7 @@ Return Value:
                         );
             }
 
-            if(!AtDpc)
+            if (!AtDpc)
             {
                 //
                 // Clear work item flag to allow DPCs to be queued

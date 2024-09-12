@@ -62,7 +62,6 @@ NICSetMacAddress(
     _In_  PMP_ADAPTER  Adapter,
     _In_  NDIS_HANDLE  ConfigurationHandle);
 
-
 static
 VOID
 NICScheduleTheResetOrPauseDpc(
@@ -166,10 +165,13 @@ Calling relationship:
 	MPInitializeEx() 	-> NICAllocAdapter() -> TXSendCompleteDpc()
 											 -> NICAsyncResetOrPauseDpc()
 											 -> AllocateVMQData()
-						-> NICReadRegParameters() -> NICSetMacAddress()
-						-> NICAllocReceiveDpc()
+						-> NICReadRegParameters() -> NICSetMacAddress()	-> HWReadPermanentMacAddress()[mphal.c]
+												  -> ReadRxQueueConfig()
+												  -> ReadQOSConfig()
+						-> NICAllocReceiveDpc() -> RXReceiveIndicateDpc() -> RXReceiveIndicate()
 						-> NICInitializeReceiveBlock()
 						-> NICAllocRCBData()
+						-> HWInitialize()[mphal.c]
 
 Arguments:
 
@@ -205,7 +207,7 @@ Return Value:
         // memory resources for sending and receiving packets.
         //
         Status = NICAllocAdapter(MiniportAdapterHandle, &Adapter);
-        if(Status != NDIS_STATUS_SUCCESS)
+        if (Status != NDIS_STATUS_SUCCESS)
         {
             break;
         }
@@ -251,7 +253,7 @@ Return Value:
         // Read Advanced configuration information from the registry
         //
         Status = NICReadRegParameters(Adapter);
-        if(Status != NDIS_STATUS_SUCCESS)
+        if (Status != NDIS_STATUS_SUCCESS)
         {
             break;
         }
@@ -281,7 +283,7 @@ Return Value:
         // and for the default queue when VMQ is enabled.
 		//
         Adapter->DefaultRecvDpc = NICAllocReceiveDpc(Adapter, 0, 0, 0);
-        if(!Adapter->DefaultRecvDpc)
+        if (!Adapter->DefaultRecvDpc)
         {
             DEBUGP(MP_ERROR, "[%p] Failed while allocating the default DPC\n", Adapter);
             Status = NDIS_STATUS_RESOURCES;
@@ -292,10 +294,10 @@ Return Value:
         // If VMQ is enabled, allocate the default receive queue. Otherwise,
         // initialize the default receive block for use in non-VMQ receives
         //
-        if(VMQ_ENABLED(Adapter))
+        if (VMQ_ENABLED(Adapter))
         {
             Status = AllocateDefaultRxQueue(Adapter);
-            if(Status != NDIS_STATUS_SUCCESS)
+            if (Status != NDIS_STATUS_SUCCESS)
             {
                 DEBUGP(MP_ERROR, "[%p] AllocateDefaultRxQueue Status 0x%08x\n", Adapter, Status);
                 break;
@@ -307,7 +309,7 @@ Return Value:
             // VMQ is disabled. Initialize the default receive block
             //
             Status = NICInitializeReceiveBlock(Adapter, 0);
-            if(Status != NDIS_STATUS_SUCCESS)
+            if (Status != NDIS_STATUS_SUCCESS)
             {
                 DEBUGP(MP_ERROR, "[%p] NICInitializeReceiveBlock Status 0x%08x\n", Adapter, Status);
                 break;
@@ -330,7 +332,7 @@ Return Value:
                 &Adapter->FreeRcbListLock,
                 &Adapter->RecvNblPoolHandle
                 );
-            if(Status != NDIS_STATUS_SUCCESS)
+            if (Status != NDIS_STATUS_SUCCESS)
             {
                 break;
             }
@@ -386,13 +388,13 @@ Return Value:
         // to the minimum of the miniport driver and protocol(s) values. If the
         // driver always indicates up full packets with
         // NdisMIndicateReceiveNetBufferLists, it should set this value to the
-        // maximum total frame size, which excludes the header.
+        // maximum total frame size, which excludes(排除) the header.
         //
         // Upper-layer drivers examine lookahead data to determine whether a
         // packet that is associated with the lookahead data is intended for
         // one or more of their clients. If the underlying driver supports
         // multipacket receive indications, bound protocols are given full net
-        // packets on every indication. Consequently, this value is identical
+        // packets on every indication. Consequently, this value is identical(完全相同的)
         // to that returned for OID_GEN_RECEIVE_BLOCK_SIZE.
         //
         AdapterGeneral.LookaheadSize = Adapter->ulLookahead;
@@ -437,7 +439,7 @@ Return Value:
         //
         // The SupportedOidList is an array of OIDs for objects that the
         // underlying driver or its NIC supports.  Objects include general,
-        // media-specific, and implementation-specific objects. NDIS forwards a
+        // media-specific, and implementation-specific objects. NDIS forwards(转发) a
         // subset of the returned list to protocols that make this query. That
         // is, NDIS filters any supported statistics OIDs out of the list
         // because protocols never make statistics queries.
@@ -539,12 +541,12 @@ Return Value:
         //
 
         Status = HWInitialize(Adapter, MiniportInitParameters);
-        if(Status != NDIS_STATUS_SUCCESS)
+        if (Status != NDIS_STATUS_SUCCESS)
         {
             Status = NDIS_STATUS_FAILURE;
             break;
         }
-    } while(FALSE);
+    } while (FALSE);
 
 
     if (Status != NDIS_STATUS_SUCCESS)
@@ -555,7 +557,6 @@ Return Value:
         }
         Adapter = NULL;
     }
-
 
     DEBUGP(MP_TRACE, "[%p] <--- MPInitializeEx Status = 0x%08x%\n", Adapter, Status);
     return Status;
@@ -698,11 +699,10 @@ Return Value:
     NDIS_STATUS_PENDING now, and call NdisMRestartComplete when the miniport
     has entered the Running state.
 
-    Other NDIS_STATUS codes indicate errors.  If an error is encountered, the
+    Other NDIS_STATUS codes indicate(表明) errors.  If an error is encountered, the
     miniport must return to the Paused state (i.e., stop indicating receives).
 
 --*/
-
 {
     NDIS_STATUS Status = NDIS_STATUS_PENDING;
 
@@ -713,7 +713,7 @@ Return Value:
     UNREFERENCED_PARAMETER(RestartParameters);
     PAGED_CODE();
 
-    MP_CLEAR_FLAG(Adapter, (fMP_ADAPTER_PAUSE_IN_PROGRESS|fMP_ADAPTER_PAUSED));
+    MP_CLEAR_FLAG(Adapter, (fMP_ADAPTER_PAUSE_IN_PROGRESS | fMP_ADAPTER_PAUSED));
 
     NICStartTheDatapath(Adapter);
 
@@ -733,8 +733,7 @@ Return Value:
 VOID
 MPHaltEx(
     IN  NDIS_HANDLE MiniportAdapterContext,
-    IN  NDIS_HALT_ACTION HaltAction
-    )
+    IN  NDIS_HALT_ACTION HaltAction)
 /*++
 
 Routine Description:
@@ -747,7 +746,7 @@ Routine Description:
 
     1) Free and unmap all I/O resources.
     2) Disable interrupt and deregister interrupt handler.
-    3) Deregister shutdown handler regsitered by
+    3) Deregister shutdown handler which is regsitered by
         NdisMRegisterAdapterShutdownHandler .
     4) Cancel all queued up timer callbacks.
     5) Finally wait indefinitely(无限期地) for all the outstanding receive
@@ -789,10 +788,10 @@ Return Value:
     //
     // On Windows XP and later, NDIS notifies our PNP event handler the reason for
     // calling Halt. So before accessing the device, check to see if the device
-    // is surprise removed, if so don't bother calling the shutdown handler to
-    // stop the hardware because it doesn't exist. Note not the halt handler.
+    // is surprise removed, if so don't bother(打扰) calling the shutdown handler to
+    // stop the hardware because it doesn't exist. Note the shutdown handler.
     //
-    if(!MP_TEST_FLAG(Adapter, fMP_ADAPTER_SURPRISE_REMOVED)) {
+    if (!MP_TEST_FLAG(Adapter, fMP_ADAPTER_SURPRISE_REMOVED)) {
         MPShutdownEx(MiniportAdapterContext, NdisShutdownPowerOff);
     }
 
@@ -839,7 +838,7 @@ Routine Description:
 
     2) A deserialized(并行化) miniport driver must complete any pending send
         operations. NDIS will not requeue pending send packets for
-        a deserialized driver since NDIS does not maintain the send
+        a deserialized driver since NDIS does not maintain(维护) the send
         queue for such a driver.
 
     3) If MiniportReset returns NDIS_STATUS_PENDING, the driver must
@@ -913,7 +912,6 @@ Return Value:
 
     } while(FALSE);
 
-
     DEBUGP(MP_TRACE, "[%p] <--- MPResetEx Status = 0x%08x\n", Adapter, Status);
     return Status;
 }
@@ -953,6 +951,9 @@ Return Value:
 
 
     liRetryTime.QuadPart = -1000000LL; // 100ms in 100ns increments
+
+	// The NdisSetTimerObject function sets a timer object to fire(触发)
+	// after a specified interval or periodically(定期地).
     NdisSetTimerObject(Adapter->AsyncBusyCheckTimer, liRetryTime, 0, NULL);
 
     DEBUGP(MP_TRACE, "[%p] <--- NICScheduleTheResetOrPauseDpc\n", Adapter);
@@ -1109,7 +1110,7 @@ Routine Description:
     MiniportQueryInformation or MiniportSetInformation requests for a
     time-out interval (deafult 4 sec), and then calls the driver's
     MiniportReset function. A NIC driver's MiniportInitialize function can
-    extend NDIS's time-out interval by calling NdisMSetAttributesEx to
+    extend(扩大) NDIS's time-out interval by calling NdisMSetAttributesEx to
     avoid unnecessary resets.
 
     MiniportCheckForHangEx runs at IRQL <= DISPATCH_LEVEL.
@@ -1501,6 +1502,9 @@ Return Value:
     {
         if (Adapter->FreeRcbList.Flink)
         {
+			// The NdisInterlockedRemoveHeadList function removes an entry, usually a packet,
+			// from the head of a doubly linked list so that access to the list is synchronized
+			// in a multiprocessor-safe way.
             while (NULL != (pEntry = NdisInterlockedRemoveHeadList(
                     &Adapter->FreeRcbList,
                     &Adapter->FreeRcbListLock)))
@@ -1533,7 +1537,6 @@ Return Value:
             NICReceiveDpcRemoveOwnership(Adapter->DefaultRecvDpc, 0);
             Adapter->DefaultRecvDpc = NULL;
         }
-
     }
 
     if (Adapter->TcbMemoryBlock)
@@ -1609,16 +1612,23 @@ Return Value:
 		// too much time in the DPC as the number of queues grows large.
 		// 缩减每个 receive block 允许消耗的 NBL indications 的数量，这样当队列数量增加时，我们就不会在 DPC 上花费太多时间。
         //
+		// Maximum number of receives that will be processed per DPC.
+		// This constraints(限制) the amount of time spent for a single receive DPC.
+		// #define NIC_MAX_RECVS_PER_DPC              64
+		//
         ReceiveDpc->MaxNblCountPerIndicate = NIC_MAX_RECVS_PER_DPC / ReceiveDpc->RecvBlockCount;
     }
 
 }
 
+// No VMQ, define the queue count to 1 so that we only allocate the global receive block
+// #define NIC_SUPPORTED_NUM_QUEUES 1
+
 
 VOID
 NICReceiveDpcSetOwnership(
     _In_ PMP_ADAPTER_RECEIVE_DPC ReceiveDpc,
-    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES-1) ULONG BlockId)
+    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES - 1) ULONG BlockId)
 /*++
 
 Routine Description:
@@ -1654,16 +1664,14 @@ Help:
     // If the DPC is not already set to consume receives for this QueueId,
     // increase the reference count and set it to be consumed.
     //
-    if(!ReceiveDpc->RecvBlock[BlockId])
+    if (!ReceiveDpc->RecvBlock[BlockId])
     {
         InterlockedIncrement(&ReceiveDpc->RecvBlockCount);
-        ReceiveDpc->RecvBlock[BlockId]=TRUE;
+        ReceiveDpc->RecvBlock[BlockId] = TRUE;
         NICUpdateDPCMaxIndicateCount(ReceiveDpc);
     }
 }
 
-
-// #define NIC_SUPPORTED_NUM_QUEUES 1
 
 VOID
 NICReceiveDpcRemoveOwnership(
@@ -1701,6 +1709,8 @@ Return Value:
     //
     if (ReceiveDpc->RecvBlock[BlockId])
     {
+		// The NdisInterlockedDecrement function decrements a caller-supplied variable
+		// of type LONG as an atomic operation, and returns the decremented value.
         InterlockedDecrement(&ReceiveDpc->RecvBlockCount);
         ASSERT(ReceiveDpc->RecvBlockCount >= 0);
         ReceiveDpc->RecvBlock[BlockId] = FALSE;
@@ -1714,7 +1724,7 @@ NICAllocReceiveDpc(
     _In_ PMP_ADAPTER      Adapter,
     ULONG ProcessorNumber,
     USHORT ProcessorGroup,
-    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES-1) ULONG BlockId)
+    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES - 1) ULONG BlockId)
 /*++
 
 Routine Description:
@@ -1725,12 +1735,17 @@ Routine Description:
 
     NICAllocReceiveDpc runs at IRQL = PASSIVE_LEVEL.
 
+Calling relationship:
+
+	NICAllocReceiveDpc()	-> RXReceiveIndicateDpc()	-> RXReceiveIndicate()
+							-> NICFreeReceiveDpc()
+
 Arguments:
 
-    Adapter                     Pointer to the adapter that will own the DPC.
-    ProcessorNumber             Target processor for DPC
-    ProcessorGroup              Target processor group for the DPC (if not Win7, set to 0)
-    QueueId                     Queue whose receives the DPC should consume (0 for non-VMQ scenarios)
+    Adapter                     - Pointer to the adapter that will own the DPC.
+    ProcessorNumber             - Target processor for DPC
+    ProcessorGroup              - Target processor group for the DPC (if not Win7, set to 0)
+    QueueId                     - Queue whose receives the DPC should consume (0 for non-VMQ scenarios)
 
 Return Value:
 
@@ -1739,7 +1754,7 @@ Return Value:
 
 --*/
 {
-    PMP_ADAPTER_RECEIVE_DPC ReceiveDpc=NULL, ExistingDpc=NULL;
+    PMP_ADAPTER_RECEIVE_DPC ReceiveDpc = NULL, ExistingDpc = NULL;
     PLIST_ENTRY ReceiveListEntry;
     NTSTATUS Status = STATUS_SUCCESS;
 
@@ -1752,14 +1767,14 @@ Return Value:
                                 sizeof(MP_ADAPTER_RECEIVE_DPC),
                                 NIC_TAG_DPC,
                                 NormalPoolPriority);
-        if(!ReceiveDpc)
+        if (!ReceiveDpc)
         {
             DEBUGP(MP_ERROR, "[%p] Could not allocate memory for receive DPC.\n", Adapter);
             break;
         }
         NdisZeroMemory(ReceiveDpc, sizeof(MP_ADAPTER_RECEIVE_DPC));
 
-        ReceiveDpc->Adapter = Adapter;
+        ReceiveDpc->Adapter = Adapter; // 指回所属的 Adapter
 
         //
         // Initialize DPC data (entry, DPC function, target processor)
@@ -1771,7 +1786,7 @@ Return Value:
         // Allocate the work item that's used if we're close to the DPC watchdog timer limit
         //
         ReceiveDpc->WorkItem = NdisAllocateIoWorkItem(Adapter->AdapterHandle);
-        if(!ReceiveDpc->WorkItem)
+        if (!ReceiveDpc->WorkItem)
         {
             DEBUGP(MP_ERROR, "[%p] Could not allocate work item for receive DPC.\n", Adapter);
             Status = NDIS_STATUS_RESOURCES;
@@ -1800,7 +1815,7 @@ Return Value:
         //
         KeSetTargetProcessorDpc(&ReceiveDpc->Dpc, (CCHAR)ProcessorNumber);
 #endif
-        if(!NT_SUCCESS(Status))
+        if (!NT_SUCCESS(Status))
         {
             DEBUGP(MP_ERROR, "[%p] Failed setting KeSetTargetProcessorDpcEx. Status: 0x%08x\n", Adapter, Status);
             break;
@@ -1809,7 +1824,7 @@ Return Value:
         ReceiveDpc->ProcessorNumber = ProcessorNumber;
 
         //
-        // Check if it's already on the list, if it is, return existing Dpc
+        // Check if it's already on the list(检查是否已存在), if it is, return existing Dpc
         // and free this one, otherwise, add to the adapter's DPC list.
         //
         NdisAcquireSpinLock(&Adapter->RecvDpcListLock);
@@ -1819,24 +1834,24 @@ Return Value:
              ExistingDpc = NULL, ReceiveListEntry = ReceiveListEntry->Flink)
         {
             ExistingDpc = CONTAINING_RECORD(ReceiveListEntry, MP_ADAPTER_RECEIVE_DPC, Entry);
-            if(ExistingDpc->ProcessorNumber == ProcessorNumber && ExistingDpc->ProcessorGroup == ProcessorGroup)
+            if (ExistingDpc->ProcessorNumber == ProcessorNumber && ExistingDpc->ProcessorGroup == ProcessorGroup)
             {
                 //
-                // A DPC exists with matching affinity information. Break so that we don't NULL ExistingDpc
+                // A DPC exists with matching affinity information.
+				// Break so that we don't NULL(置空) ExistingDpc
                 //
                 break;
             }
         }
 
-        if(ExistingDpc)
+        if (ExistingDpc)
         {
             //
             // Use existing DPC
             //
             DEBUGP(MP_TRACE, "[%p] Reusing existing DPC which matches affinity.\n", Adapter);
-            NICFreeReceiveDpc(ReceiveDpc);
+            NICFreeReceiveDpc(ReceiveDpc); // Free the newly allocated DPC
             ReceiveDpc = ExistingDpc;
-
         }
         else
         {
@@ -1850,9 +1865,9 @@ Return Value:
 
         NICReceiveDpcSetOwnership(ReceiveDpc,BlockId);
 
-    }while(FALSE);
+    } while (FALSE);
 
-    if(!NT_SUCCESS(Status) && ReceiveDpc)
+    if (!NT_SUCCESS(Status) && ReceiveDpc)
     {
         NICFreeReceiveDpc(ReceiveDpc);
         ReceiveDpc = NULL;
@@ -1886,8 +1901,9 @@ Return Value:
 
     //
     // Free DPC dymainc fields and memory
+	// 先释放结构体内部的内存空间，再释放结构体本身的内存空间
     //
-    if(AdapterDpc->WorkItem)
+    if (AdapterDpc->WorkItem)
     {
          NdisFreeIoWorkItem(AdapterDpc->WorkItem);
     }
@@ -1899,12 +1915,17 @@ Return Value:
 PMP_ADAPTER_RECEIVE_DPC
 NICGetDefaultReceiveDpc(
     _In_ PMP_ADAPTER      Adapter,
-    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES-1) ULONG BlockId)
+    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES - 1) ULONG BlockId)
 /*++
+
 Routine Description:
 
     The NICGetDefaultReceiveDpc function returns the default receive DPC for the adapter,
-    and sets it to consume receives from the passed in QueueId.
+    and sets it to consume receives from the passed in QueueId(将其设置为执行传入的 QueueId 的接收).
+
+Calling relationship:
+
+	NICGetDefaultReceiveDpc()	-> VMQ_ENABLED()
 
 Arguments:
 
@@ -1919,7 +1940,7 @@ Return Value:
 {
     ASSERT(BlockId <  NIC_SUPPORTED_NUM_QUEUES);
 
-    if(VMQ_ENABLED(Adapter))
+    if (VMQ_ENABLED(Adapter))
     {
         NdisAcquireSpinLock(&Adapter->RecvDpcListLock);
         NICReceiveDpcSetOwnership(Adapter->DefaultRecvDpc,BlockId);
@@ -1944,6 +1965,7 @@ NDIS_STATUS
     _Inout_ PNDIS_HANDLE RecvNblPoolHandle
     )
 /*++
+
 Routine Description:
 
     The NICAllocRCBData function allocated NumberOfRcbs worth of RCB and NBL memory for use
@@ -1953,12 +1975,13 @@ Routine Description:
 
 Arguments:
 
-    Adapter                     Pointer to our adapter
-    NumberOfRcbs                Number of RCB structures to allocate (and NBLs as a result)
-    RcbMemoryBlock              Receives the allocated memory block that is split up into each individual RCB
-    FreeRcbList                 Initialized blank list to be populated with each individual RCB.
-    FreeRcbListLock             Initialized lock used when updating the RCB list (and subsequent consumers should use lock).
-    RcbNblPoolHandle            Receives the Ndis NBL pool handle for the allocated NBLs (to be used on free).
+    Adapter                  - Pointer to our adapter
+    NumberOfRcbs             - Number of RCB structures to allocate (and NBLs as a result)
+    RcbMemoryBlock           - Receives the allocated memory block that is split up into each individual RCB
+						a pointer which point to the allocated memory block that is split up into each individual RCB
+    FreeRcbList              - Initialized blank list to be populated(填充) with each individual RCB.
+    FreeRcbListLock          - Initialized lock used when updating the RCB list (and subsequent consumers should use lock).
+    RcbNblPoolHandle         - Receives the Ndis NBL pool handle for the allocated NBLs (to be used on free).
 
 Return Value:
 
@@ -2005,13 +2028,13 @@ Return Value:
                 sizeof(RCB) * NumberOfRcbs,
                 NIC_TAG_RCB,
                 NormalPoolPriority);
-
         if (!*RcbMemoryBlock)
         {
             Status = NDIS_STATUS_RESOURCES;
             DEBUGP(MP_ERROR, "[%p] NdisAllocateMemoryWithTagPriority failed\n", Adapter);
             break;
         }
+
         NdisZeroMemory(*RcbMemoryBlock, sizeof(RCB) * NumberOfRcbs);
 
         //
@@ -2031,6 +2054,7 @@ Return Value:
                     NULL,  // MdlChain
                     0,     // DataOffset
                     0);    // DataLength
+
             if (Rcb->Nbl == NULL)
             {
                 Status = NDIS_STATUS_RESOURCES;
@@ -2039,7 +2063,7 @@ Return Value:
             }
 
             //
-            // Add RCB pointer to miniport reserved portion of NBL
+            // Add RCB pointer to miniport reserved(预留的) portion of NBL
             //
             RCB_FROM_NBL(Rcb->Nbl) = Rcb;
 
@@ -2048,8 +2072,7 @@ Return Value:
                     &Rcb->RcbLink,
                     FreeRcbListLock);
         }
-
-    }while(FALSE);
+    } while (FALSE);
 
     return Status;
 }
@@ -2065,6 +2088,11 @@ Routine Description:
     Read device configuration parameters from the registry
 
 	Should be called at IRQL = PASSIVE_LEVEL.
+
+Calling relationship:
+	NICReadRegParameters()	-> NICSetMacAddress()	-> HWReadPermanentMacAddress()
+							-> ReadRxQueueConfig()
+							-> ReadQOSConfig()
 
 Arguments:
 
@@ -2103,10 +2131,14 @@ Return Value:
     ConfigurationParameters.NdisHandle = Adapter->AdapterHandle;
     ConfigurationParameters.Flags = 0;
 
+	// NDIS drivers call the NdisOpenConfigurationEx function to get a configuration handle
+	// that allows access to configuration parameters in the registry.
+	// The ConfigurationHandle parameter is a pointer to a caller-supplied variable
+	// in which NdisOpenConfigurationEx returns a handle to a registry key.
     Status = NdisOpenConfigurationEx(
             &ConfigurationParameters,
             &ConfigurationHandle);
-    if(Status != NDIS_STATUS_SUCCESS)
+    if (Status != NDIS_STATUS_SUCCESS)
     {
         DEBUGP(MP_ERROR, "[%p] NdisOpenConfigurationEx Status = 0x%08x\n", Adapter, Status);
         return NDIS_STATUS_FAILURE;
@@ -2124,7 +2156,7 @@ Return Value:
     // Read VMQ related configuration parameters
     //
     Status = ReadRxQueueConfig(ConfigurationHandle, Adapter);
-    if(Status != NDIS_STATUS_SUCCESS)
+    if (Status != NDIS_STATUS_SUCCESS)
     {
         DEBUGP(MP_ERROR, "[%p] ReadRxQueueConfig Status = 0x%08x\n", Adapter, Status);
         Status = NDIS_STATUS_FAILURE;
@@ -2166,10 +2198,13 @@ Routine Description:
 
     IRQL = PASSIVE_LEVEL
 
+Calling reltionship:
+	NICSetMacAddress()	-> HWReadPermanentMacAddress()
+
 Arguments:
 
-    Adapter                     Pointer to our adapter
-    ConfigurationHandle         NIC configuration from NdisOpenConfigurationEx
+    Adapter                     - Pointer to our adapter
+    ConfigurationHandle         - NIC configuration from NdisOpenConfigurationEx
 
 Return Value:
 
@@ -2283,7 +2318,7 @@ Return Value:
         // Check if all of our NBLs that we indicated up to the protocol have returned to us yet.
         //
         USHORT ReceiveBlockId = 0;
-        for (; ReceiveBlockId < NIC_SUPPORTED_NUM_QUEUES; ++ReceiveBlockId)
+        for (; ReceiveBlockId < NIC_SUPPORTED_NUM_QUEUES; ++ ReceiveBlockId)
         {
             if (RECEIVE_BLOCK_IS_BUSY(Adapter, ReceiveBlockId))
             {
@@ -2302,12 +2337,12 @@ Return Value:
 NDIS_STATUS
 NICInitializeReceiveBlock(
     _In_ PMP_ADAPTER Adapter,
-    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES-1) ULONG BlockId)
+    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES - 1) ULONG BlockId)
 /*++
 
 Routine Description:
 
-    The NICInitializeReceiveBlock function initializes the fields of an adapter receive block.
+    The NICInitializeReceiveBlock function initializes the fields(字段) of an adapter receive block.
     This block is consumed by the owning receive DPC.
 
 Arguments:
@@ -2322,7 +2357,7 @@ Return Value:
 --*/
 {
     DEBUGP(MP_TRACE, "[%p] ---> NICInitializeReceiveBlock. Index: %i\n", Adapter, BlockId);
-    ASSERT(BlockId <  NIC_SUPPORTED_NUM_QUEUES);
+    ASSERT(BlockId < NIC_SUPPORTED_NUM_QUEUES);
 
     NdisZeroMemory(&Adapter->ReceiveBlock[BlockId], sizeof(MP_ADAPTER_RECEIVE_BLOCK));
     NdisInitializeListHead(&Adapter->ReceiveBlock[BlockId].ReceiveList);
@@ -2337,7 +2372,7 @@ Return Value:
 VOID
 NICFlushReceiveBlock(
     _In_ PMP_ADAPTER Adapter,
-    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES-1) ULONG BlockId)
+    _In_ _In_range_(0, NIC_SUPPORTED_NUM_QUEUES - 1) ULONG BlockId)
 /*++
 
 Routine Description:
@@ -2363,9 +2398,9 @@ Return Value:
     ReceiveBlock = &Adapter->ReceiveBlock[BlockId];
 
     //
-    // Return any pending receives on the block
+    // Return any pending receives on the block(遍历整个 ReceiveList，释放每个 RCB)
     //
-    for(Entry = NdisInterlockedRemoveHeadList(&ReceiveBlock->ReceiveList, &ReceiveBlock->ReceiveListLock);
+    for (Entry = NdisInterlockedRemoveHeadList(&ReceiveBlock->ReceiveList, &ReceiveBlock->ReceiveListLock);
         Entry;
         Entry = NdisInterlockedRemoveHeadList(&ReceiveBlock->ReceiveList, &ReceiveBlock->ReceiveListLock))
     {
@@ -2416,7 +2451,7 @@ Return Value:
     //
     // If the adapter is not ready, undo(撤销操作) the reference and fail the call
     //
-    if(!MP_IS_READY(Adapter))
+    if (!MP_IS_READY(Adapter))
     {
         InterlockedDecrement(&Adapter->ReceiveBlock[BlockId].PendingReceives);
         DEBUGP(MP_LOUD, "[%p] Could not acquire reference for ReceiveBlock %i. The adapter is not ready.\n", Adapter, BlockId);
@@ -2455,7 +2490,7 @@ Return Value:
 {
     ULONG Count = InterlockedDecrement(&Adapter->ReceiveBlock[BlockId].PendingReceives);
     DEBUGP(MP_LOUD, "[%p] Released reference for ReceiveBlock %i. RefCount: %i.\n", Adapter, BlockId, Count);
-    if(RefCount)
+    if (RefCount)
     {
         *RefCount = Count;
     }

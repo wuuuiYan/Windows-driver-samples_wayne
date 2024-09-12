@@ -13,21 +13,14 @@ Module Name:
 
 Abstract:
 
-    This module declares the TCB and RCB structures, and the functions to
-    manipulate them.
+    This module declares the TCB and RCB structures, and the functions to manipulate them.
 
     See the comments in TcbRcb.c.
 
 --*/
 
-
-
-
 #ifndef _DATAPATH_H
 #define _DATAPATH_H
-
-
-
 
 NDIS_STATUS
 TXNblReference(

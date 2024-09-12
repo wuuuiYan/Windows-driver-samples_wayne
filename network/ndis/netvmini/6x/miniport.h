@@ -26,7 +26,6 @@ Abstract:
 #define _MINIPORT_H
 
 
-
 //
 // Update the driver version number every time you release a new driver
 // The high word is the major version. The low word is the minor version.
@@ -38,8 +37,6 @@ Abstract:
 #define NIC_MAJOR_DRIVER_VERSION           0x04
 #define NIC_MINOR_DRIVER_VERISON           0x02
 #define NIC_VENDOR_DRIVER_VERSION          ((NIC_MAJOR_DRIVER_VERSION << 16) | NIC_MINOR_DRIVER_VERISON)
-
-
 
 //
 // Define the NDIS miniport interface version that this driver targets.
@@ -63,8 +60,8 @@ Abstract:
 
 
 //
-// Memory allocation tags to help track and debug memory usage.  Change these
-// for your miniport.  You can add or remove tags as needed.
+// Memory allocation tags to help track and debug memory usage.
+// Change these for your miniport. You can add or remove tags as needed.
 //
 #define NIC_TAG                            ((ULONG)'_MVN')  // NVM_
 #define NIC_TAG_TCB                        ((ULONG)'TMVN')  // NVMT
@@ -101,7 +98,7 @@ Abstract:
 //
 #define NIC_RESOURCE_BUF_SIZE \
         (sizeof(NDIS_RESOURCE_LIST) + \
-         (10*sizeof(CM_PARTIAL_RESOURCE_DESCRIPTOR)))
+         (10 * sizeof(CM_PARTIAL_RESOURCE_DESCRIPTOR)))
 
 
 //
@@ -118,53 +115,55 @@ Abstract:
 #endif
 
 
-// _NBL：指向 NET_BUFFER_LIST 结构的指针
+/*
+	_ENTRY：a poniter to a LIST_ENTRY
+	_NB：a poniter to a NET_BUFFER
+	_NBL：a poniter to a NET_BUFFER_LIST
+*/
+
 // 将 NET_BUFFER_LIST 中 MiniportReserved 数组的第一个元素的地址强制类型转换为 PLIST_ENTRY 类型的指针
+// Get a pointer to a LIST_ENTRY from a NBL pointer
 #define LIST_ENTRY_FROM_NBL(_NBL) ((PLIST_ENTRY)&(_NBL)->MiniportReserved[0])
 
 /*
 #define CONTAINING_RECORD(address, type, field) \
     ((type *)((PCHAR)(address) - (ULONG_PTR)(&((type *)0)->field)))
-    将 address 解释为 type 结构中的 field 字段的地址，并返回包含该字段的 type 结构的指针。
+    将 address 解释为 type 结构中的 field 字段的地址，返回指向包含 field 字段的 type 结构的指针
 */
-// _ENTRY：指向 LIST_ENTRY 结构的指针
-// 将 LIST_ENTRY 结构的指针转换为包含该 LIST_ENTRY 的 NET_BUFFER_LIST 结构的指针
+
+// 将指向 LIST_ENTRY 结构的指针转换为包含该 LIST_ENTRY 的 NET_BUFFER_LIST 结构的指针
+// Get a pointer to a NBL from a LIST_ENTRY pointer
 #define NBL_FROM_LIST_ENTRY(_ENTRY) (CONTAINING_RECORD(_ENTRY, NET_BUFFER_LIST, MiniportReserved[0]))
 
-// Get a pointer to a LIST_ENTRY for the receive free list, from an NBL pointer
+// Get a pointer to a LIST_ENTRY for the receive free list from a NBL pointer
 #define RECV_FREE_LIST_FROM_NBL(_NBL) LIST_ENTRY_FROM_NBL(_NBL)
 
-// Get a pointer to a NBL, from a pointer to a LIST_ENTRY on the receive free list
+// Get a pointer to a NBL, from a LIST_ENTRY pointer on the receive free list
 #define NBL_FROM_RECV_FREE_LIST(_ENTRY) NBL_FROM_LIST_ENTRY(_ENTRY)
 
-
-// Get a pointer to a LIST_ENTRY for the cancel list, from an NBL pointer
+// Get a pointer to a LIST_ENTRY for the cancel list, from a NBL pointer
 #define CANCEL_LIST_FROM_NBL(_NBL) ((PSINGLE_LIST_ENTRY)&(_NBL)->MiniportReserved[0])
 
-// Get a pointer to a NBL, from a pointer to a LIST_ENTRY on the cancel list
+// Get a pointer to a NBL, from a LIST_ENTRY pointer on the cancel list
 #define NBL_FROM_CANCEL_LIST(_ENTRY) NBL_FROM_LIST_ENTRY(_ENTRY)
 
-
-
-// Get a pointer to a LIST_ENTRY for the send wait list, from an NB pointer
+// Get a pointer to a LIST_ENTRY for the send wait list, from a NB pointer
 #define SEND_WAIT_LIST_FROM_NB(_NB) ((PLIST_ENTRY)&(_NB)->MiniportReserved[0])
 
-// Get a pointer to a NB, from a pointer to a LIST_ENTRY on the send wait list
+// Get a pointer to a NB, from a LIST_ENTRY pointer on the send wait list
 #define NB_FROM_SEND_WAIT_LIST(_ENTRY) (CONTAINING_RECORD(_ENTRY, NET_BUFFER, MiniportReserved[0]))
 
-
-// Get a pointer to an RCB from an NBL
+// Get a pointer to a RCB from a NBL pointer
 #define RCB_FROM_NBL(_NBL) (*((PRCB*)&(_NBL)->MiniportReserved[0]))
 
-// Gets the number of outstanding TCBs/NET_BUFFERs associated with
-// this NET_BUFFER_LIST
+// Get the number of outstanding TCBs/NET_BUFFERs associated with this NET_BUFFER_LIST
 #define SEND_REF_FROM_NBL(_NBL) (*((PLONG)&(_NBL)->MiniportReserved[1]))
 
-
+// Get a pointer to a NET_BUFFER_LIST from a NBL pointer
 #define NBL_FROM_SEND_NB(_NB) (*((PNET_BUFFER_LIST*)&(_NB)->MiniportReserved[2]))
 
+//
 #define FRAME_TYPE_FROM_SEND_NB(_NB) (*((PULONG)&(_NB)->MiniportReserved[3]))
-
 
 //
 // The NDIS_RW_LOCK_EX lock is more efficient (especially in the presence of
@@ -219,6 +218,8 @@ typedef struct _MP_GLOBAL
     // A LIST_ENTRY structure describes an entry in a doubly linked list
     // or serves as the header for such a list.
     LIST_ENTRY              AdapterList;
+	// If a miniport manages more than one miniport adapter,
+	// a separate driver stack can exist over each miniport adapter.
     /*
         1) List Entry 是链表中的实际数据节点，其成员 Flink 和 Blink 分别指向相邻的节点。
         2) List Header 是链表的起点(也可看作终点)，不包含实际数据，
@@ -245,11 +246,8 @@ struct _MP_ADAPTER;
 extern NDIS_HANDLE     NdisDriverHandle;
 extern MP_GLOBAL       GlobalData;
 
-
-
 // Miniport routines
 SET_OPTIONS  MPSetOptions;
-
 
 void
 MPAttachAdapter(
@@ -263,7 +261,6 @@ BOOLEAN
 MPIsAdapterAttached(
     _In_ struct _MP_ADAPTER *Adapter);
 
-
 VOID
 DbgPrintOidName(
     _In_  NDIS_OID  OidReqQuery);
@@ -272,7 +269,4 @@ VOID
 DbgPrintAddress(
     _In_reads_bytes_(NIC_MACADDR_SIZE) PUCHAR Address);
 
-
 #endif    // _MINIPORT_H
-
-

@@ -102,10 +102,10 @@ C_ASSERT(sizeof(NIC_FRAME_HEADER) == HW_FRAME_HEADER_SIZE);
 // This value must match the *IfType in the driver .inf file
 #define NIC_IFTYPE                         IF_TYPE_ETHERNET_CSMACD
 
-// Claim to be 100mbps duplex
+// Claim to be 100mbps duplex(双工)
 #define MEGABITS_PER_SECOND                1000000ULL
-#define NIC_XMIT_SPEED                     (100ULL*MEGABITS_PER_SECOND)
-#define NIC_RECV_SPEED                     (100ULL*MEGABITS_PER_SECOND)
+#define NIC_XMIT_SPEED                     (100ULL * MEGABITS_PER_SECOND)
+#define NIC_RECV_SPEED                     (100ULL * MEGABITS_PER_SECOND)
 
 
 

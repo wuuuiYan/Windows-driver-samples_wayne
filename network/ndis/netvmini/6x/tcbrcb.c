@@ -20,7 +20,7 @@ Abstract:
     you should install more than one instance of the miniport. If there
     is only one instance installed, the driver throws the send packet on
     the floor and completes the send successfully. If there are more
-    instances present, it indicates the incoming send packet to the other
+    instances present(存在), it indicates the incoming send packet to the other
     instances. For example, if there 3 instances: A, B, & C installed.
     Packets coming in for A instance would be indicated to B & C; packets
     coming into B would be indicated to C, & A; and packets coming to C
@@ -40,6 +40,12 @@ VOID
 ReturnTCB(
     _In_  PMP_ADAPTER  Adapter,
     _In_  PTCB         Tcb)
+/*++
+
+Calling relationship:
+	ReturnTCB() -> TXNblRelease()[datapath.c]
+
+--*/
 {
     TXNblRelease(Adapter, NBL_FROM_SEND_NB(Tcb->NetBuffer), TRUE);
     Tcb->NetBuffer = NULL;
@@ -49,7 +55,6 @@ ReturnTCB(
             &Tcb->TcbLink,
             &Adapter->FreeTcbListLock);
 }
-
 
 
 _Must_inspect_result_
@@ -69,9 +74,9 @@ Routine Description:
 
 Arguments:
 
-    Adapter                     The receiving adapter
-    Nbl1QInfo                   8021Q Tag information for the FRAME being received
-    Frame                       The frame that will be attached to the RCB
+    Adapter                     - The receiving adapter
+    Nbl1QInfo                   - 8021Q Tag information for the FRAME being received
+    Frame                       - The frame that will be attached to the RCB
 
 Return Value:
 
@@ -85,17 +90,17 @@ Return Value:
 
     DEBUGP(MP_TRACE, "[%p] ---> GetRCB.\n", Adapter);
 
-    if(VMQ_ENABLED(Adapter))
+    if (VMQ_ENABLED(Adapter))
     {
         //
-        // Retrieve the RCB from the target VMQ queue for the frame
+        // Retrieve the RCB from the target VMQ queue for the frame(从目标队列为 frame 检索 RCB)
         //
         GetRcbForRxQueue(Adapter, Frame, Nbl1QInfo, &Rcb);
     }
-    else
+    else // !VMQ_ENABLED(Adapter)
     {
         //
-        // Retrieve the RCB from the global RCB pool
+        // Retrieve the RCB from the global RCB pool(从全局 RCB pool 中检索 RCB)
         //
         PLIST_ENTRY pEntry = NdisInterlockedRemoveHeadList(
                 &Adapter->FreeRcbList,
@@ -107,11 +112,11 @@ Return Value:
             // Receiving on the default receive queue, increment its pending count
             //
             Status = NICReferenceReceiveBlock(Adapter, 0);
-            if(Status != NDIS_STATUS_SUCCESS)
+            if (Status != NDIS_STATUS_SUCCESS)
             {
                 //
                 // The adapter is no longer in a ready state, so we were not able to take a reference on the
-                // receive block. Add the RCB back to the free list and fail this receive. 
+                // receive block. Add the RCB back to the free list and fail this receive.
                 //
                 NdisInterlockedInsertTailList(
                     &Adapter->FreeRcbList,
@@ -128,22 +133,22 @@ Return Value:
         // Simulate the hardware DMA'ing the received frame into the NB's MDL.
         //
         Status = HWBeginReceiveDma(Adapter, Nbl1QInfo, Rcb, Frame);
-        if(Status != NDIS_STATUS_SUCCESS)
+        if (Status != NDIS_STATUS_SUCCESS)
         {
             DEBUGP(MP_TRACE, "[%p] HWBeginReceiveDma failed with error 0x%08x, aborting RCB allocation.\n", Adapter, Status);
             //
             // Increase failure counters if appropriate
             //
-            if(Status == NDIS_STATUS_RESOURCES)
+            if (Status == NDIS_STATUS_RESOURCES)
             {
-                ++Adapter->RxResourceErrors;   
+                ++Adapter->RxResourceErrors;
             }
-            else if(Status != NDIS_STATUS_INVALID_ADDRESS)
+            else if (Status != NDIS_STATUS_INVALID_ADDRESS)
             {
                 ++Adapter->RxRuntErrors;
             }
             //
-            // Recover RCB 
+            // Recover RCB
             //
             ReturnRCB(Adapter, Rcb);
             Rcb = NULL;
@@ -170,7 +175,8 @@ ReturnRCB(
 
 Routine Description:
 
-    This routine frees an RCB back to the unused pool, recovers relevant memory used in the RCB.
+    This routine frees an RCB back to the unused pool,
+	recovers(恢复) relevant memory used in the RCB.
 
     Runs at IRQL <= DISPATCH_LEVEL
 
@@ -186,14 +192,14 @@ Return Value:
 --*/
 {
     PUCHAR Data = Rcb->Data;
-    ASSERT(Data); 
+    ASSERT(Data);
 
     DEBUGP(MP_TRACE, "[%p] ---> ReturnRCB. RCB: %p\n", Adapter, Rcb);
 
-    if(VMQ_ENABLED(Adapter))
+    if (VMQ_ENABLED(Adapter))
     {
         //
-        // Recover RCB back to owner VMQ queue
+        // Recover RCB back to owner VMQ queue(将 RCB 归还到所属的 VMQ 队列)
         //
         RecoverRxQueueRcb(Adapter, Rcb);
     }
@@ -201,21 +207,24 @@ Return Value:
     {
         //
         // Recover RCB to global RCB pool
+		// The NdisInterlockedInsertTailList function inserts an entry, usually a packet,
+		// at the tail of a doubly linked list so that access to the list is synchronized
+		// in a multiprocessor-safe way.
         //
         NdisInterlockedInsertTailList(
                 &Adapter->FreeRcbList,
                 &Rcb->RcbLink,
                 &Adapter->FreeRcbListLock);
         Rcb = NULL;
+
         //
         // We receive on the default receive queue, decrement its pending count
+		// Step 1: Decrement the pending receive count on a adapter receive block.
+		// Step 2: Decrement the reference count of a FRAME
         //
         NICDereferenceReceiveBlock(Adapter, 0, NULL);
         HWFrameRelease((PFRAME)Data);
     }
 
     DEBUGP(MP_TRACE, "[%p] <--- ReturnRCB.\n", Adapter);
-
 }
-
-

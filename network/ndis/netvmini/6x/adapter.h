@@ -27,10 +27,10 @@ Notes:
 // -----------------------------------------------------------------------------
 //
 
-#define MP_SET_FLAG(_M, _F)             ((_M)->Flags |= (_F))
-#define MP_CLEAR_FLAG(_M, _F)           ((_M)->Flags &= ~(_F))
-#define MP_TEST_FLAG(_M, _F)            (((_M)->Flags & (_F)) != 0)
-#define MP_TEST_FLAGS(_M, _F)           (((_M)->Flags & (_F)) == (_F))
+#define MP_SET_FLAG(_M, _F)             ((_M)->Flags |= (_F))          // 状态置位
+#define MP_CLEAR_FLAG(_M, _F)           ((_M)->Flags &= ~(_F))         // 状态清除
+#define MP_TEST_FLAG(_M, _F)            (((_M)->Flags & (_F)) != 0)    // 测试状态，结果为 true 说明 _M 的状态包含 _F
+#define MP_TEST_FLAGS(_M, _F)           (((_M)->Flags & (_F)) == (_F)) // 测试多个状态
 
 
 //
@@ -56,7 +56,7 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
     LIST_ENTRY Entry;
 
     //
-    // Kernel DPC used for recieve
+    // a pointer which points to Kernel DPC used for recieve
     //
     KDPC Dpc; // 《Windows内核情景分析》P770
 
@@ -68,15 +68,16 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
 
     //
     // Tracks which receive blocks need to be recieved on this DPC.
-    //
-    BOOLEAN RecvBlock[NIC_SUPPORTED_NUM_QUEUES]; // 表示每个接收队列的状态
-    volatile LONG RecvBlockCount; // 跟踪当前被阻塞的接收队列的数量
+    // 表示每个接收队列的状态(wheather the receive block be setted to be or not to be consumed by this DPC)
+	//
+    BOOLEAN RecvBlock[NIC_SUPPORTED_NUM_QUEUES];
+    volatile LONG RecvBlockCount; // 当前接收块的数量
 
     //
     // Sets up the maximum amount of NBLs that can be indicated by a single
     // receive block. This is initially NIC_MAX_RECVS_PER_INDICATE.
     //
-    ULONG MaxNblCountPerIndicate;
+    ULONG MaxNblCountPerIndicate; // 《Windows内核情景分析》P918
 
     //
     // Work item used if we need to avoid DPC timeout(超时)
@@ -85,14 +86,14 @@ typedef struct _MP_ADAPTER_RECEIVE_DPC
     volatile LONG WorkItemQueued; // 表示 WorkItem 是否已队列
 
     //
-    // Pointer back to owner Adapter structure (accesed within work item)
+    // Pointer back to owner Adapter structure (accessed within work item)
     //
     struct _MP_ADAPTER *Adapter;
 
 } MP_ADAPTER_RECEIVE_DPC, * PMP_ADAPTER_RECEIVE_DPC;
 
 //
-// This structure is used to track pending receives on the adpater (consumed by receive DPCs).
+// This structure is used to track 『pending receives』 on the adpater (consumed by receive DPCs).
 // One receive block maintained for each VMQ queue (if enabled),
 // otherwise a single structure is used to track receives on the adapter.
 //
@@ -104,7 +105,7 @@ typedef struct DECLSPEC_CACHEALIGN _MP_ADAPTER_RECEIVE_BLOCK
     //
     LIST_ENTRY ReceiveList;
     NDIS_SPIN_LOCK ReceiveListLock;
-    volatile LONG PendingReceives;
+    volatile LONG PendingReceives; // 待处理的接收数目
 } MP_ADAPTER_RECEIVE_BLOCK, * PMP_ADAPTER_RECEIVE_BLOCK;
 
 //
@@ -177,7 +178,7 @@ typedef struct _MP_ADAPTER
 
 
     // Number of transmit NBLs from the protocol that we still have
-    volatile LONG           nBusySend; // 当前正在处理的发送数目
+    volatile LONG           nBusySend; // 来自上层 protocol 当前正在处理的发送数目
 
     // Spin lock to ensure only one CPU is sending at a time
     KSPIN_LOCK              SendPathSpinLock; // 确保在同一时间只有一个 CPU 进行发送操作的自旋锁
@@ -204,7 +205,7 @@ typedef struct _MP_ADAPTER
     //
     LIST_ENTRY               RecvDpcList;     // 接收 DPC 链表，用于处理不同的处理器亲和性
     NDIS_SPIN_LOCK           RecvDpcListLock; // 用于保护接收 DPC 链表的自旋锁
-    PMP_ADAPTER_RECEIVE_DPC  DefaultRecvDpc;  // 默认接收 DPC
+    PMP_ADAPTER_RECEIVE_DPC  DefaultRecvDpc;  // 指向默认接收 DPC 的指针
 
     //
     // Async pause and reset tracking
@@ -279,7 +280,7 @@ typedef struct _MP_ADAPTER
     ULONG                   UnalignedAdapterBufferSize; // 未对齐的适配器内存缓冲区大小
 
     //
-    // Tracks any pending NBLs for the particular receiver
+    // Tracks any 『pending NBLs』 for the particular receiver
     // (either 0 for non-VMQ scenarios, or the corresponding VMQ queue).
     // These are consumed by the receive DPCs(被接收 DPC 处理).
     //
@@ -323,6 +324,7 @@ typedef struct _MP_ADAPTER
 
 } MP_ADAPTER, *PMP_ADAPTER;
 
+// 将 _ctx_ 的类型强制转化为 PMP_ADAPTER
 #define MP_ADAPTER_FROM_CONTEXT(_ctx_) ((PMP_ADAPTER)(_ctx_))
 
 PMP_ADAPTER_RECEIVE_DPC

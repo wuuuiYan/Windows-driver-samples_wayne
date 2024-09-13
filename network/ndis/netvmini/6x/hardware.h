@@ -139,7 +139,7 @@ C_ASSERT(sizeof(NIC_FRAME_HEADER) == HW_FRAME_HEADER_SIZE);
 
 
 // Simulated latency across the link.  If this is set to zero, the driver
-// will saturate the link.  Unfortunately, when the "link" is simulated in CPU,
+// will saturate(饱和) the link.  Unfortunately, when the "link" is simulated in CPU,
 // that means that the CPU is saturated, and you hit DPC timeouts.
 // (This throttling isn't needed with a physical NIC)
 #define NIC_SIMULATED_LATENCY              0 // in 100ns units

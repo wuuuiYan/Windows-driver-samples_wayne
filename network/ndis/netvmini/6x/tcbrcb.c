@@ -42,6 +42,9 @@ ReturnTCB(
     _In_  PTCB         Tcb)
 /*++
 
+Routine Description:
+	Release the NET_BUFFER back to the protocol and the TCB back to the free list.
+
 Calling relationship:
 	ReturnTCB() -> TXNblRelease()[datapath.c]
 

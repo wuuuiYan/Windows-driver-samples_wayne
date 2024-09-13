@@ -322,8 +322,7 @@ Routine Description:
 
     If there are not enough resources to send immediately, this function stops
     and leaves the remaining frames on the SendWaitList, to be sent once there
-    are enough resources.
-
+    are enough resources.(等有足够资源后一次性发送)
 
     Runs at IRQL <= DISPATCH_LEVEL
 
@@ -351,8 +350,8 @@ Return Value:
     // We check this so that items from the SendWaitList get sent to the
     // receiving adapters in the same order that they were queued.
     //
-    // You could remove this guard and everything will still work ok, but some
-    // frames might be delivered out-of-order.
+    // You could remove this guard and everything will still work ok,
+    // but some frames might be delivered out-of-order.
     //
     // Generally, this mechanism wouldn't be applicable to real hardware, since
     // the hardware would have its own mechanism to ensure sends are transmitted
@@ -360,6 +359,8 @@ Return Value:
     //
     if (!fAtDispatch)
     {
+		// The KeRaiseIrql routine raises the hardware priority to the specified IRQL value,
+		// thereby masking off interrupts of equivalent or lower IRQL on the current processor.
         KeRaiseIrql(DISPATCH_LEVEL, &OldIrql);
     }
 
@@ -410,7 +411,6 @@ Return Value:
 
             NetBuffer = NB_FROM_SEND_WAIT_LIST(pQueuedSend);
 
-
             //
             // We already packed the frame type into the net buffer before accepting
             // it for send.  Now that we have a TCB to keep track of the data, let's
@@ -433,6 +433,7 @@ Return Value:
 
     if (!fAtDispatch)
     {
+		// Restore the IRQL on the current processor to its original value.
         KeLowerIrql(OldIrql);
     }
 
@@ -458,7 +459,7 @@ Routine Description:
 
 Arguments:
 
-    FunctionContext             Pointer to the adapter that is sending frames
+    FunctionContext             - Pointer to the adapter that is sending frames
 
 Return Value:
 
@@ -470,12 +471,14 @@ Return Value:
 
     if (!Adapter->SendCompleteWorkItemQueued)
     {
+		// There is no queuee work item.
         liDelay.QuadPart = -(NIC_SIMULATED_LATENCY);
+		// The NdisSetTimerObject function sets a timer object to fire after a specified interval or periodically.
+		// 设置计时器，模拟一定的延迟后触发发送完成操作。
         NdisSetTimerObject(Adapter->SendCompleteTimer, liDelay, 0, NULL);
     }
 
     DEBUGP(MP_TRACE, "[%p] Scheduled Send Complete DPC [Delay: %i].\n", Adapter, NIC_SIMULATED_LATENCY);
-
 }
 
 
@@ -491,8 +494,14 @@ WorkItemQueuedForWatchdogAvoidance(
 
 Routine Description:
 
-    This function should be called from the receive or send-complete DPCs. It queues a work item to do the receives or send-completes
-    if the DPC watchdog timer is within 25% of the limit. This allows the processor to reach PASSIVE_LEVEL and reset the watchdog.
+    This function should be called from the receive or send-complete DPCs.
+	It queues a work item to do the receives or send-completes if the DPC
+	watchdog timer is within 25% of the limit. This allows the processor
+	to reach PASSIVE_LEVEL and reset(重置) the watchdog.
+
+	For more information on the DPC watchdog timer, see:
+	1) Wikipedia
+	2) https://security.stackexchange.com/questions/206434/what-is-windows-watchdog-and-what-do-we-know-about-it
 
     Runs at IRQL = DISPATCH_LEVEL.
 
@@ -505,7 +514,7 @@ Arguments:
 
 Return Value:
 
-    TRUE - Work item queued due to watchdog timer, caller should exit DPC
+    TRUE  - Work item queued due to watchdog timer, caller should exit(退出) DPC
     FALSE - Ok to continue in DPC
 
 --*/
@@ -513,7 +522,7 @@ Return Value:
     KDPC_WATCHDOG_INFORMATION WatchdogInfo;
     NTSTATUS Status;
 
-    if(*WorkItemQueued)
+    if (*WorkItemQueued)
     {
         //
         // We've already queued up the work item, no need to check watchdog information
@@ -521,6 +530,7 @@ Return Value:
         return TRUE;
     }
 
+	// Return the DPC watchdog timer values for the current processor.
     Status = KeQueryDpcWatchdogInformation(&WatchdogInfo);
     if (NT_SUCCESS(Status)
             //
@@ -528,7 +538,8 @@ Return Value:
             //
             && WatchdogInfo.DpcWatchdogLimit != 0
             //
-            // Once we go below 25% of the watchdog limit we fall back on the work item to allow the watchdog to reset
+            // Once we go below 25% of the watchdog limit
+			// we fall back on the work item to allow the watchdog to reset
             //
             && WatchdogInfo.DpcWatchdogCount < WatchdogInfo.DpcWatchdogLimit / 4)
     {
@@ -538,8 +549,8 @@ Return Value:
         LONG AlreadyQueued = InterlockedCompareExchange(
                                   WorkItemQueued,
                                   TRUE,
-                                  FALSE);
-        if(!AlreadyQueued)
+                                  FALSE); // Perform an atomic compare-and-exchange operation on the specified values.
+        if (!AlreadyQueued)
         {
             //
             // We've crossed our threshold for consecutive DPCs, schedule work item to complete this receive
@@ -551,7 +562,7 @@ Return Value:
     }
 
     //
-    // We're still within acceptable time limits
+    // We're still within acceptable time limits(仍处于可接受的时限范围内，即多于25%)
     //
     return FALSE;
 }
@@ -582,6 +593,7 @@ Routine Description:
     {
         ULONG BytesSent;
 
+		// Return the next TCB queued on the send list, or NULL if the list was empty.
         PTCB Tcb = TXGetNextTcbToSend(Adapter);
         if (!Tcb)
         {
@@ -591,7 +603,6 @@ Routine Description:
             fRescheduleThisDpcAgain = FALSE;
             break;
         }
-
 
         //
         // Finish the transmit operation.  For our hardware, that means the
@@ -612,7 +623,7 @@ Routine Description:
         else
         {
             //
-            // We've finished sending this NB successfully; update the stats.
+            // We've finished sending this NB successfully; update the status.
             //
             switch (Tcb->FrameType)
             {
@@ -706,8 +717,7 @@ TXSendCompleteDpc(
 
 Routine Description:
 
-    This routine simulates the DPC handler of a send complete hardware
-    interrupt.
+    This routine simulates the DPC handler of a send complete hardware interrupt.
 
 Arguments:
 
@@ -843,7 +853,7 @@ TXGetNextTcbToSend(
 
 Routine Description:
 
-    Returns the next TCB queued on the send list, or NULL if the list was empty.
+    Return the next TCB queued on the send list, or NULL if the list was empty.
 
     Runs at IRQL <= DISPATCH_LEVEL.
 
@@ -859,14 +869,19 @@ Return Value:
 --*/
 {
     PTCB Tcb;
+
+	//
+	// Remove an entry, usually a packet, from the head of a doubly linked list
+	// so that access to the list is synchronized in a multiprocessor-safe way.
+	//
     PLIST_ENTRY pTcbEntry = NdisInterlockedRemoveHeadList(
             &Adapter->BusyTcbList,
             &Adapter->BusyTcbListLock);
 
-    if (! pTcbEntry)
+    if (!pTcbEntry)
     {
         // End of list -- no more items to receive.
-        return NULL;
+        return NULL; // No TCB to send
     }
 
     Tcb = CONTAINING_RECORD(pTcbEntry, TCB, TcbLink);

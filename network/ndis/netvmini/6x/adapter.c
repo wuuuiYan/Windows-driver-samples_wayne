@@ -931,8 +931,8 @@ Routine Description:
 Arguments:
 
     Adapter      - Pointer to our adapter
-    fReschedule  - TRUE if this is rescheduling an existing async pause/reset
-                   operation, or FALSE if this is a new pause/reset operation.
+    fReschedule  - TRUE if this is rescheduling an existing async pause/reset operation
+                   FALSE if this is a new pause/reset operation.
 
 Return Value:
 
@@ -949,8 +949,10 @@ Return Value:
         Adapter->AsyncBusyCheckCount = 0;
     }
 
-
     liRetryTime.QuadPart = -1000000LL; // 100ms in 100ns increments
+	// 以 100 纳秒为单位，1000000 * 100ns = 100ms
+	// 负号表示从执行该语句的当前时刻开始的 100ms 后触发定时器
+	// 若为正号，则表示从整个系统启动时刻的 100ms 后触发定时器
 
 	// The NdisSetTimerObject function sets a timer object to fire(触发)
 	// after a specified interval or periodically(定期地).
@@ -1395,7 +1397,7 @@ Return Value:
         // Set up a timer function for use with our MPReset routine.
         //
         Timer.TimerFunction = NICAsyncResetOrPauseDpc; // 函数指针类型的赋值
-		// 重新赋值是因为最后指向分配的定时器对象的存储位置的指针不同
+		// 重新赋值的区别在于最后指向分配的定时器对象的存储位置的指针不同
 
         Status = NdisAllocateTimerObject(
                 NdisDriverHandle,
@@ -2224,7 +2226,7 @@ Return Value:
             Adapter->PermanentAddress);
 
     //
-    // Now seed the current MAC address with the permanent address.
+    // Now seed the current MAC address with the permanent address(为当前添加永久).
 	// #define NIC_COPY_ADDRESS(_dest,_src)       ETH_COPY_NETWORK_ADDRESS(_dest,_src)
     //
     NIC_COPY_ADDRESS(Adapter->CurrentAddress, Adapter->PermanentAddress);

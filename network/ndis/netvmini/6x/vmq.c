@@ -39,10 +39,12 @@ AllocateRxQueueReceiveMemory(
 
 NDIS_IO_WORKITEM_FUNCTION FreeRxQueuesWorkItem;
 
+
 NDIS_STATUS
 AllocateVMQData(
     _Inout_ struct _MP_ADAPTER *Adapter)
 /*++
+
 Routine Description:
 
     This routine will initialize the basic fields necessary for a MP_ADAPTER_VMQ_DATA structure. The function
@@ -73,10 +75,10 @@ Return Value:
         //
         // Initialize the locks for the queues
         //
-        for(i=0; i<NIC_SUPPORTED_NUM_QUEUES;i++)
+        for (i = 0; i < NIC_SUPPORTED_NUM_QUEUES; i ++)
         {
             VMQData->RxQueues[i].QueueLock = NdisAllocateRWLock(Adapter->AdapterHandle);
-            if(!VMQData->RxQueues[i].QueueLock)
+            if (!VMQData->RxQueues[i].QueueLock)
             {
                 DEBUGP(MP_ERROR, "[%p] NdisAllocateRWLock failed for Queue %i.\n", Adapter, i);
                 Status = NDIS_STATUS_RESOURCES;
@@ -84,7 +86,7 @@ Return Value:
             }
         }
 
-        if(Status != NDIS_STATUS_SUCCESS)
+        if (Status != NDIS_STATUS_SUCCESS)
         {
             //
             // Failed allocating the locks, need to fail this allocation
@@ -92,12 +94,13 @@ Return Value:
             break;
         }
 
-    }while(FALSE);
+    } while (FALSE);
 
     DEBUGP(MP_TRACE, "<--- [%p] AllocateVMQData Status 0x%08x\n", Adapter, Status);
 
     return Status;
 }
+
 
 NDIS_STATUS
 AllocateDefaultRxQueue(
@@ -325,7 +328,7 @@ Return Value:
 #if (NDIS_SUPPORT_NDIS630)
         HwCapabilities.SupportedQueueProperties |= NDIS_RECEIVE_FILTER_DYNAMIC_PROCESSOR_AFFINITY_CHANGE_SUPPORTED;
 #endif
-        
+
         HwCapabilities.SupportedFilterTests = NDIS_RECEIVE_FILTER_TEST_HEADER_FIELD_EQUAL_SUPPORTED;
         HwCapabilities.SupportedHeaders = NDIS_RECEIVE_FILTER_MAC_HEADER_SUPPORTED;
         HwCapabilities.SupportedMacHeaderFields = NDIS_RECEIVE_FILTER_MAC_HEADER_DEST_ADDR_SUPPORTED | NDIS_RECEIVE_FILTER_MAC_HEADER_VLAN_ID_SUPPORTED;
